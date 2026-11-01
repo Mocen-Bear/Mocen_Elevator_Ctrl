@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>电梯呼叫 · 3D 控制链模型</title>
+<style>
+  :root{
+    --bg:#0A1220; --ink:#BBD3E8; --dim:#6F8AA6; --line:#1E3245;
+    --up:#F0AD33; --dn:#3D89D9; --ok:#7CE0A0; --warn:#E2704A;
+    --card:#0E1A2B; --cardLine:#1B2E45;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;overflow:hidden}
+  header{display:flex;align-items:baseline;gap:14px;padding:12px 18px 6px}
+  header h1{margin:0;font-size:19px;letter-spacing:.4px;color:#DCEAF7;font-weight:650}
+  header .sub{font-size:12.5px;color:var(--dim)}
+  #badge{margin-left:auto;font-size:12px;padding:4px 10px;border-radius:999px;
+    border:1px solid #2A4258;color:#9FBBD6;background:#0C1727}
+  #badge.sim{border-color:#4A3A1E;color:#E3B96B}
+  #badge.real{border-color:#1E5A3C;color:var(--ok)}
+
+  #main{display:flex;gap:14px;padding:0 14px 12px;height:calc(100vh - 52px)}
+  #stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-width:0}
+  #c{border-radius:16px;background:radial-gradient(circle at 50% 30%,#101F33,#070D16 72%);
+    box-shadow:0 10px 40px #000a;touch-action:none;cursor:grab}
+  #cap{font-size:12.5px;color:var(--dim);text-align:center}
+
+  #panel{width:470px;display:flex;flex-direction:column;gap:9px;overflow:auto;padding-right:4px}
+  .card{background:var(--card);border:1px solid var(--cardLine);border-radius:12px;padding:9px 11px}
+  .card h2{margin:0 0 7px;font-size:12px;font-weight:600;color:#8FAECB;letter-spacing:.6px}
+
+  /* RSSI 双节点 */
+  .node{display:flex;align-items:center;gap:8px;font-size:12px;margin:3px 0}
+  .node .nm{width:74px;color:#93B2CE;font-variant-numeric:tabular-nums}
+  .bar{flex:1;height:9px;border-radius:5px;background:#122036;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;border-radius:5px;transition:width .18s linear}
+  .node .db{width:56px;text-align:right;color:#7E9CB8;font-variant-numeric:tabular-nums}
+  .node.near .nm{color:#DCEAF7;font-weight:650}
+  #walk{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--dim)}
+  #walk input{flex:1}
+  #who{margin-top:7px;font-size:13px;color:#DCEAF7}
+  #who b{color:#fff;font-size:15px}
+
+  /* 控制链 */
+  #chain{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+  .chip{font-size:11.5px;padding:4px 7px;border-radius:7px;border:1px solid #22364D;
+    color:#7E9CB8;background:#0B1523;transition:all .18s}
+  .chip.on{color:#08131F;background:var(--ok);border-color:var(--ok);font-weight:700;
+    box-shadow:0 0 14px #7ce0a066}
+  .arw{font-size:11px;color:#37536E}
+
+  /* 机构剖视 */
+  #m{display:block;width:100%;border-radius:9px;background:#0B1523;border:1px solid #16263A}
+  #mread{display:flex;gap:12px;font-size:12px;margin-top:6px;color:#8FAECB;font-variant-numeric:tabular-nums}
+  #mread b{color:#DCEAF7}
+
+  /* 呼梯按钮 */
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .big{padding:11px 0;border-radius:10px;border:1px solid #2A4258;background:#0D1A2A;color:#DCEAF7;
+    font-size:15px;font-weight:650;cursor:pointer;letter-spacing:1px;transition:all .15s}
+  .big:hover{background:#12233A}
+  .big:active{transform:translateY(1px)}
+  .big.up{border-color:#5A4517}
+  .big.up:hover{background:#2A2210}
+  .big.dn{border-color:#1E4570}
+  .big.dn:hover{background:#0F2136}
+  .big[disabled]{opacity:.45;cursor:not-allowed}
+  .floors{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+  .fl{padding:7px 0;border-radius:8px;border:1px solid #24384F;background:#0C1727;color:#8FAECB;
+    font-size:13px;cursor:pointer;text-align:center}
+  .fl.on{background:#16324B;color:#fff;border-color:#3C6D96}
+  .fl.no{opacity:.35;text-decoration:line-through;cursor:not-allowed}
+
+  /* 日志 */
+  #logbox{height:126px;overflow:auto;font-size:11.5px;line-height:1.62;
+    font-family:ui-monospace,Consolas,"Courier New",monospace}
+  #logbox div{white-space:pre-wrap;word-break:break-all}
+  .l-send{color:#86B6E0}
+  .l-ok{color:var(--ok)}
+  .l-bad{color:var(--warn)}
+  .l-dim{color:#5C7791}
+
+  .row{display:flex;gap:8px;align-items:center}
+  .mini{font-size:11.5px;padding:5px 9px;border-radius:7px;border:1px solid #24384F;
+    background:#0C1727;color:#9FBBD6;cursor:pointer}
+  .mini:hover{background:#132437}
+  .mini.on{background:#16324B;color:#fff}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>电梯呼叫 · 3D 控制链模型</h1>
+  <span class="sub">点一次 ▲/▼，看成条链怎么动</span>
+  <span id="badge" class="sim">数据来源：模拟</span>
+</header>
+
+<div id="main">
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="cap">拖动旋转（默认不自动转）· 只有 <b>2F / 3F</b> 画全，1F / 4F 是半透明虚影 · 轿厢到站自动开门</div>
+  </div>
+
+  <div id="panel">
+
+    <div class="card">
+      <h2>你站在哪一层（蓝牙测距 · 与 App 同一套判层规则）</h2>
+      <div id="nodes"></div>
+      <div id="walk"><span>走廊位置</span><input id="pos" type="range" min="0" max="1" step="0.005" value="0.34"><span id="poslab">2F 门口</span></div>
+      <div id="who">判定楼层：<b id="whoFloor">2F</b> <span style="color:#6F8AA6">（当前 = 蓝牙判层，不是摄像头/不是瞎猜）</span></div>
+    </div>
+
+    <div class="card">
+      <h2>控制链（按顺序点亮）</h2>
+      <div id="chain">
+        <span class="chip" id="ch0">手机 App</span><span class="arw">▸</span>
+        <span class="chip" id="ch1">BLE 写入</span><span class="arw">▸</span>
+        <span class="chip" id="ch2">ESP32</span><span class="arw">▸</span>
+        <span class="chip" id="ch3">舵机转 22°</span><span class="arw">▸</span>
+        <span class="chip" id="ch4">按钮后移 3mm</span><span class="arw">▸</span>
+        <span class="chip" id="ch5">轿厢过来</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>机构剖视（尺寸按真值：曲柄 R=8mm · 行程 = R·sinθ · 22° → 3.00mm）</h2>
+      <canvas id="m" width="864" height="500"></canvas>
+      <div id="mread">
+        <span>曲柄 <b id="rd">0.0°</b></span>
+        <span>销钉位移 <b id="rt">0.00 mm</b></span>
+        <span>按钮后移 <b id="rb">0.00 mm</b></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>呼梯（你只能呼"你所在那一层"的按钮）</h2>
+      <div class="btns">
+        <button class="big up" id="bUp">▲ 上行</button>
+        <button class="big dn" id="bDn">▼ 下行</button>
+      </div>
+      <div class="floors" id="floors"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="mini" id="bAuto">▶ 自动演示</button>
+        <button class="mini" id="bReset">↺ 复位</button>
+        <span style="font-size:11.5px;color:#6F8AA6">键盘：1/2/3/4 换层 · U/D 呼梯</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>回执 / 日志</h2>
+      <div id="logbox"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   第一部分：井道 3D —— 常量与投影公式与 android/.../ElevatorView.kt 完全一致
+   （见 SHAFT_MODEL.md §9）。本页**不新增几何常量**，只增加"控制链"外壳。
+   ========================================================================= */
+const shaftHalf=0.80, carHalf=0.66, carHalfH=1.05, floorGap=2.60, carClear=0.06;
+const pitDepth=0.45, headroom=1.00, slabBorder=0.11;
+const DIST=9.0, NEAR=0.15, AUTO_SPIN=0.30;
+const L=[0.40,0.80,0.45];
+
+const floors=["1F","2F","3F","4F"];
+const slabY=i=>i*floorGap;
+const carCenterY=i=>slabY(i)+carHalfH+carClear;
+const doorH=()=>carHalfH*2-0.18;
+
+let shaftBottom=slabY(0)-pitDepth;
+let shaftTop=carCenterY(floors.length-1)+carHalfH+headroom;
+
+const viewBottom=slabY(1)-1.00, viewTop=slabY(3)+0.80;
+const viewCenterY=(viewBottom+viewTop)/2, viewHeight=viewTop-viewBottom;
+const bandBottom=slabY(1), bandTop=slabY(3);
+const GHOST=0.26;
+
+const AUTO_ROTATE=false;
+let yaw=0.42, pitch=-0.13, dragging=false, lastX=0, lastY=0;
+let carIndex=1, carY=carCenterY(1), carTargetY=carCenterY(1), cwY=0;
+let doorOpen=0, doorTarget=0, doorTimer=null;
+const panelLit=[0,0,0,0];                 // 厅外呼梯面板被按亮的程度 0..1（新增，纯视觉）
+
+function openDoors(holdMs){
+  doorTarget=1;
+  if(doorTimer) clearTimeout(doorTimer);
+  doorTimer=setTimeout(()=>{ doorTarget=0; }, holdMs||1800);
+}
+function cwYFor(cy){
+  const n=Math.max(1,floors.length-1);
+  const t=Math.min(1,Math.max(0,(cy-carCenterY(0))/(carCenterY(n)-carCenterY(0))));
+  const cwTop=shaftTop-0.75, cwBot=shaftBottom+0.85;
+  return cwTop+t*(cwBot-cwTop);
+}
+cwY=cwYFor(carY);
+
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let focal=1, cx=0, cyc=0;
+function fitCanvas(){
+  const box=document.getElementById('stage');
+  const H=Math.max(300, box.clientHeight-26);
+  const W=Math.max(240, Math.min(box.clientWidth-4, Math.round(H*0.80)));
+  cv.width=W; cv.height=H; cv.style.width=W+'px'; cv.style.height=H+'px';
+  cx=W/2; cyc=H/2;
+  focal=(H*0.96)*DIST/viewHeight;
+}
+window.addEventListener('resize', fitCanvas);
+
+let faces=[], verts=[0,0,0,0,0,0,0,0,0,0,0,0];
+
+function camDepth(x,y,z){
+  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const yy=y-viewCenterY, rz0=-x*sy+z*cy;
+  return yy*sp+rz0*cp+DIST;
+}
+function project(x,y,z){
+  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const yy=y-viewCenterY;
+  const rx=x*cy+z*sy, rz0=-x*sy+z*cy;
+  const ry=yy*cp-rz0*sp, rz=yy*sp+rz0*cp+DIST, zz=Math.max(rz,NEAR);
+  const s=focal/zz;
+  return [cx+rx*s, cyc-ry*s];
+}
+function brightness(){
+  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const ax=verts[3]-verts[0],ay=verts[4]-verts[1],az=verts[5]-verts[2];
+  const bx=verts[6]-verts[0],by=verts[7]-verts[1],bz=verts[8]-verts[2];
+  let nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;
+  const nl=Math.hypot(nx,ny,nz); if(nl>1e-6){nx/=nl;ny/=nl;nz/=nl;}
+  const rnx=nx*cy+nz*sy, rnz0=-nx*sy+nz*cy;
+  const rny=ny*cp-rnz0*sp, rnz=ny*sp+rnz0*cp;
+  return 0.34+0.66*Math.abs(rnx*L[0]+rny*L[1]+rnz*L[2]);
+}
+function shade(hexs,a,b){
+  const r=parseInt(hexs.slice(1,3),16),g=parseInt(hexs.slice(3,5),16),bl=parseInt(hexs.slice(5,7),16);
+  const f=Math.min(Math.max(b,0.18),1.35);
+  return `rgba(${Math.min(255,r*f)|0},${Math.min(255,g*f)|0},${Math.min(255,bl*f)|0},${a/255})`;
+}
+function mixHex(a,b,t){
+  const k=Math.max(0,Math.min(1,t));
+  const ar=parseInt(a.slice(1,3),16),ag=parseInt(a.slice(3,5),16),ab=parseInt(a.slice(5,7),16);
+  const br=parseInt(b.slice(1,3),16),bg=parseInt(b.slice(3,5),16),bb=parseInt(b.slice(5,7),16);
+  const h=n=>("0"+Math.round(n).toString(16)).slice(-2);
+  return "#"+h(ar+(br-ar)*k)+h(ag+(bg-ag)*k)+h(ab+(bb-ab)*k);
+}
+function setQuad(x0,y0,z0,x1,y1,z1,x2,y2,z2,x3,y3,z3){verts=[x0,y0,z0,x1,y1,z1,x2,y2,z2,x3,y3,z3];}
+function ghostAt(y){return y<bandBottom||y>bandTop;}
+function emitQuad(hexs,alpha,brightOverride){
+  let b=(brightOverride>0)?brightOverride:brightness(), p=[], d=0, ys=0;
+  for(let k=0;k<4;k++){p.push(project(verts[k*3],verts[k*3+1],verts[k*3+2]));d+=camDepth(verts[k*3],verts[k*3+1],verts[k*3+2]);ys+=verts[k*3+1];}
+  const g=ghostAt(ys/4);
+  faces.push({pts:p,depth:d/4,color:shade(hexs,g?alpha*GHOST:alpha,b*(g?0.62:1))});
+}
+function emitLine(x0,y0,z0,x1,y1,z1,col){
+  const g=ghostAt((y0+y1)/2);
+  faces.push({line:true,pts:[project(x0,y0,z0),project(x1,y1,z1)],
+    depth:(camDepth(x0,y0,z0)+camDepth(x1,y1,z1))/2,
+    color:g?"rgba(122,152,180,0.20)":col});
+}
+function emitText(text,x,y,z){
+  const g=ghostAt(y);
+  faces.push({text,pts:[project(x,y,z)],depth:camDepth(x,y,z),
+    color:g?"rgba(130,158,185,0.42)":"#C6DCF0"});
+}
+function box(cx0,cy0,cz0,hx,hy,hz,hexs,a){
+  setQuad(cx0-hx,cy0-hy,cz0-hz,cx0+hx,cy0-hy,cz0-hz,cx0+hx,cy0+hy,cz0-hz,cx0-hx,cy0+hy,cz0-hz); emitQuad(hexs,a);
+  setQuad(cx0-hx,cy0-hy,cz0+hz,cx0+hx,cy0-hy,cz0+hz,cx0+hx,cy0+hy,cz0+hz,cx0-hx,cy0+hy,cz0+hz); emitQuad(hexs,a);
+  setQuad(cx0-hx,cy0-hy,cz0-hz,cx0-hx,cy0-hy,cz0+hz,cx0-hx,cy0+hy,cz0+hz,cx0-hx,cy0+hy,cz0-hz); emitQuad(hexs,a);
+  setQuad(cx0+hx,cy0-hy,cz0-hz,cx0+hx,cy0-hy,cz0+hz,cx0+hx,cy0+hy,cz0+hz,cx0+hx,cy0+hy,cz0-hz); emitQuad(hexs,a);
+  setQuad(cx0-hx,cy0+hy,cz0-hz,cx0+hx,cy0+hy,cz0-hz,cx0+hx,cy0+hy,cz0+hz,cx0-hx,cy0+hy,cz0+hz); emitQuad(hexs,a);
+  setQuad(cx0-hx,cy0-hy,cz0-hz,cx0+hx,cy0-hy,cz0-hz,cx0+hx,cy0-hy,cz0+hz,cx0-hx,cy0-hy,cz0+hz); emitQuad(hexs,a);
+}
+function rectLines(h,y,col){emitLine(-h,y,-h,h,y,-h,col);emitLine(h,y,-h,h,y,h,col);emitLine(h,y,h,-h,y,h,col);emitLine(-h,y,h,-h,y,-h,col);}
+
+let pressLight=0;   // 0..1，呼梯时厅门面板的一圈光晕
+
+function build(){
+  faces=[];
+  const frame="#9FC0DE", soft="rgba(159,192,222,0.78)";
+  const h=shaftHalf,b=shaftBottom,t=shaftTop;
+  setQuad(-h,b,-h,h,b,-h,h,t,-h,-h,t,-h); emitQuad("#3E6FA8",34);
+  setQuad(-h,b,h,h,b,h,h,t,h,-h,t,h);     emitQuad("#3E6FA8",34);
+  setQuad(-h,b,-h,-h,b,h,-h,t,h,-h,t,-h); emitQuad("#3E6FA8",34);
+  setQuad(h,b,-h,h,b,h,h,t,h,h,t,-h);     emitQuad("#3E6FA8",34);
+  setQuad(-h,b,-h,h,b,-h,h,b,h,-h,b,h);   emitQuad("#16304A",255);
+  rectLines(h,t,frame);
+  emitLine(-h,b,-h,-h,t,-h,frame); emitLine(h,b,-h,h,t,-h,frame);
+  emitLine(-h,b,h,-h,t,h,frame);   emitLine(h,b,h,h,t,h,frame);
+  for(let i=0;i<floors.length;i++) rectLines(h,slabY(i)+0.02,soft);
+  const railX=carHalf+0.02, railColor="#B9D2E8";
+  for(const rx of [-railX,railX]){
+    emitLine(rx,b,-0.05,rx,t,-0.05,railColor);
+    emitLine(rx,b,0.05,rx,t,0.05,railColor);
+  }
+
+  // 厅门框 + 呼梯面板（被呼梯时，面板与指示灯亮起）
+  const zf=-shaftHalf+0.02, hd=carHalf*0.86, dh=doorH();
+  for(let i=0;i<floors.length;i++){
+    const y0=slabY(i)+0.06, y1=y0+dh;
+    const lit=panelLit[i]||0;
+    setQuad(-hd,y0,zf+0.01,hd,y0,zf+0.01,hd,y1,zf+0.01,-hd,y1,zf+0.01); emitQuad("#8FA9C2",58);
+    emitLine(-hd,y0,zf,hd,y0,zf,soft); emitLine(-hd,y1,zf,hd,y1,zf,soft);
+    emitLine(-hd,y0,zf,-hd,y1,zf,soft); emitLine(hd,y0,zf,hd,y1,zf,soft);
+    emitLine(0,y0,zf,0,y1,zf,soft);
+    emitLine(-hd,y0,zf,hd,y0,zf,"#0E2438");
+    const px=hd+0.09;
+    box(px,y0+dh*0.62,zf+0.01,0.035,0.11,0.015, lit>0? mixHex("#2A3E52","#4E7A5F",lit*0.8) : "#2A3E52",255);
+    box(px,y0+dh*0.62+0.05,zf-0.005,0.012,0.012,0.006,
+        lit>0? mixHex("#7CE0A0","#EAFFF3",lit) : "#7CE0A0",255);
+    if(lit>0.01){
+      // 一圈扩散出去的绿光（"真的是这一层被按了"）
+      const rr=0.10+0.32*lit;
+      for(const [dx,dy] of [[-rr,0],[rr,0],[0,-rr],[0,rr]]){
+        emitLine(px+dx*0.4,y0+dh*0.62+0.05+dy*0.4,zf-0.02,px+dx,y0+dh*0.62+0.05+dy,zf-0.02,
+                 `rgba(124,224,160,${0.55*lit})`);
+      }
+    }
+  }
+
+  const bb=slabBorder;
+  for(let i=0;i<floors.length;i++){
+    const y=slabY(i);
+    setQuad(-h,y,h-bb,h,y,h-bb,h,y,h,-h,y,h);               emitQuad("#24405C",255);
+    setQuad(-h,y,-h,h,y,-h,h,y,-h+bb,-h,y,-h+bb);           emitQuad("#24405C",255);
+    setQuad(-h,y,-h+bb,-h+bb,y,-h+bb,-h+bb,y,h-bb,-h,y,h-bb); emitQuad("#24405C",255);
+    setQuad(h-bb,y,-h+bb,h,y,-h+bb,h,y,h-bb,h-bb,y,h-bb);     emitQuad("#24405C",255);
+  }
+
+  box(0,t-0.22,0,0.55,0.09,0.34,"#7C93A6",255);
+  box(0,t-0.40,0,0.16,0.13,0.13,"#5E7080",255);
+  const cwX=0.40, cwZ=shaftHalf-0.22;
+  box(cwX,cwY,cwZ,0.16,0.58,0.10,"#4A5A66",255);
+  for(let k=1;k<=3;k++){
+    const py=cwY-0.58+k*0.29;
+    emitLine(cwX-0.16,py,cwZ-0.101,cwX+0.16,py,cwZ-0.101,"#38454E");
+  }
+  const rope="rgba(175,196,214,0.75)";
+  const carTop=carY+carHalfH, cwTop=cwY+0.58, sheaveY=t-0.46;
+  for(const dx of [-0.10,0,0.10]) emitLine(dx,carTop,0,dx,sheaveY,0,rope);
+  for(const dx of [-0.05,0.05]) emitLine(cwX+dx,cwTop,cwZ,cwX+dx,sheaveY,cwZ,rope);
+
+  buildCar();
+  for(let i=0;i<floors.length;i++) emitText(floors[i],-0.30,slabY(i)+0.34,-shaftHalf+0.04);
+}
+
+function buildCar(){
+  const s=carHalf,hh=carHalfH,cy=carY,y0=cy-hh,y1=cy+hh;
+  const lit=Math.max(0,Math.min(1,doorOpen));
+  const botIn=mixHex("#1B2E40","#8E93A0",lit);
+  const sideIn=mixHex("#33536F","#9FB4C6",lit);
+  const backIn=mixHex("#22384E","#D9D5C8",lit);
+  setQuad(-s,y1,-s,s,y1,-s,s,y1,s,-s,y1,s); emitQuad("#456A8E",255);
+  setQuad(-s,y0,-s,s,y0,-s,s,y0,s,-s,y0,s); emitQuad(botIn,255);
+  setQuad(-s,y0,-s,-s,y0,s,-s,y1,s,-s,y1,-s); emitQuad(sideIn,255);
+  setQuad(s,y0,-s,s,y0,s,s,y1,s,s,y1,-s);     emitQuad(sideIn,255);
+  setQuad(-s,y0,s,s,y0,s,s,y1,s,-s,y1,s);     emitQuad(backIn,255,1.10);
+  const zF=-s, doorL=carHalf*0.92, headerY=y0+doorH()+0.12;
+  function front(x0,x1,ya,yb,hexs){ setQuad(x0,ya,zF,x1,ya,zF,x1,yb,zF,x0,yb,zF); emitQuad(hexs,255); }
+  const header="#24435E";
+  const gapHalf=0.03+doorOpen*(s*0.92-0.03);
+  front(-s,s,headerY,y1,header);
+  front(-s,s,y0,y0+0.06,header);
+  front(-s,-gapHalf,y0+0.06,headerY,"#86AECF");
+  front(gapHalf,s,y0+0.06,headerY,"#86AECF");
+  if(doorOpen<0.02) front(-gapHalf,gapHalf,y0+0.06,headerY,"#F0C070");
+  emitLine(-doorL,y0+0.06,zF,-doorL,headerY,zF,header);
+  emitLine(doorL,y0+0.06,zF,doorL,headerY,zF,header);
+  if(doorOpen>0.02){
+    emitLine(-gapHalf,y0+0.06,zF,-gapHalf,headerY,zF,header);
+    emitLine(gapHalf,y0+0.06,zF,gapHalf,headerY,zF,header);
+    const bRailY=y0+hh*0.62, bRailZ=s-0.004;
+    emitLine(-s*0.86,bRailY,bRailZ,s*0.86,bRailY,bRailZ,"#8A6B33");
+    emitLine(-s*0.86,bRailY-0.05,bRailZ,s*0.86,bRailY-0.05,bRailZ,"#6E5426");
+    const lampY=headerY-0.34, lx0=-s*0.58, lx1=s*0.58;
+    setQuad(lx0-0.05,lampY-0.20,s-0.008,lx1+0.05,lampY-0.20,s-0.008,lx1+0.05,lampY+0.20,s-0.008,lx0-0.05,lampY+0.20,s-0.008); emitQuad("#FFDF9A",78,1.20);
+    setQuad(lx0,lampY-0.055,s-0.013,lx1,lampY-0.055,s-0.013,lx1,lampY+0.055,s-0.013,lx0,lampY+0.055,s-0.013); emitQuad("#FFF4D2",255,1.30);
+  }
+  const trim="#28405A", railY=y0+hh*1.05, skirtY=y0+0.10;
+  for(const sx of [-s,s]){
+    const ox=sx<0?-0.006:0.006;
+    emitLine(sx+ox,railY,-s,sx+ox,railY,s,trim);
+    emitLine(sx+ox,skirtY,-s,sx+ox,skirtY,s,trim);
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  build();
+  faces.sort((a,b)=>b.depth-a.depth);
+  ctx.font="bold 14px -apple-system,sans-serif";
+  for(const f of faces){
+    if(f.text){ ctx.fillStyle=f.color; ctx.fillText(f.text,f.pts[0][0],f.pts[0][1]); }
+    else if(f.line){ ctx.strokeStyle=f.color; ctx.lineWidth=1.1; ctx.beginPath();
+      ctx.moveTo(f.pts[0][0],f.pts[0][1]); ctx.lineTo(f.pts[1][0],f.pts[1][1]); ctx.stroke(); }
+    else { ctx.fillStyle=f.color; ctx.beginPath(); ctx.moveTo(f.pts[0][0],f.pts[0][1]);
+      for(let i=1;i<f.pts.length;i++) ctx.lineTo(f.pts[i][0],f.pts[i][1]);
+      ctx.closePath(); ctx.fill(); }
+  }
+  const g=ctx.createLinearGradient(0,0,0,cv.height*0.22);
+  g.addColorStop(0,'rgba(3,7,12,0.82)'); g.addColorStop(1,'rgba(3,7,12,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,cv.width,cv.height*0.22);
+  const g2=ctx.createLinearGradient(0,cv.height,0,cv.height*0.78);
+  g2.addColorStop(0,'rgba(3,7,12,0.82)'); g2.addColorStop(1,'rgba(3,7,12,0)');
+  ctx.fillStyle=g2; ctx.fillRect(0,cv.height*0.78,cv.width,cv.height*0.22);
+}
+
+cv.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{if(!dragging)return;
+  yaw+=(e.clientX-lastX)*0.012; pitch=Math.min(0.12,Math.max(-0.80,pitch+(e.clientY-lastY)*0.005));
+  lastX=e.clientX;lastY=e.clientY;});
+cv.addEventListener('pointerup',()=>dragging=false);
+cv.addEventListener('pointercancel',()=>dragging=false);
+
+/* =========================================================================
+   第二部分：机构剖视（和 机械件_演示样机/cad/build.py 的"原理图"同一套公式）
+   真值：R_CRANK=8.0  Z_SHAFT=33.5  SLOT_W=6.6  SLOT_HY=3.5
+        行程 t = R·sinθ（θ=22° → 3.00mm）；销钉下垂 = R·(1-cosθ)
+   画面左半 = 按钮/面板（另一把比例尺），右半 = 机构（同一把比例尺），中间断开。
+   ========================================================================= */
+const R_CRANK=8.0, Z_SHAFT=33.5, SLOT_W=6.6, SLOT_HY=3.5, LINK_Z=9.0;
+const mcv=document.getElementById('m'), mg=mcv.getContext('2d');
+const MW=mcv.width, MH=mcv.height;
+
+function roundRect(g,x,y,w,h,r){
+  g.beginPath();
+  g.moveTo(x+r,y); g.lineTo(x+w-r,y); g.quadraticCurveTo(x+w,y,x+w,y+r);
+  g.lineTo(x+w,y+h-r); g.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  g.lineTo(x+r,y+h); g.quadraticCurveTo(x,y+h,x,y+h-r);
+  g.lineTo(x,y+r); g.quadraticCurveTo(x,y,x+r,y); g.closePath();
+}
+
+function drawMech(deg){
+  const yb=0, yc=yb-R_CRANK;
+  const t=R_CRANK*Math.sin(deg*Math.PI/180);
+  const drop=R_CRANK*(1-Math.cos(deg*Math.PI/180));
+  mg.clearRect(0,0,MW,MH);
+
+  /* ---- 右半：机构（z ∈ [ZS-13, ZS+13]，y ∈ [yc-13.2, yc+11.2]）---- */
+  const RX0=Math.round(MW*0.505), RW=MW-RX0-8, RY0=8, RH=MH-16;
+  const zA=Z_SHAFT-13, zB=Z_SHAFT+13, yA=yc-13.2, yB=yc+11.2;
+  const S=Math.min(RW/(zB-zA), RH/(yB-yA));
+  const ox=RX0+RW/2 - S*((zA+zB)/2 - Z_SHAFT);
+  const oy=RY0+RH/2 + S*((yA+yB)/2 - yc);
+  const X=z=>ox+S*(z-Z_SHAFT), Y=y=>oy-S*(y-yc);
+  const tx=z=>X(z+t);                      // 随行程平移后的位置
+
+  mg.save();
+  mg.beginPath(); mg.rect(RX0,RY0,RW,RH); mg.clip();
+
+  // 静止刻度（0 mm 位置）
+  mg.strokeStyle="rgba(120,150,180,.28)"; mg.setLineDash([4,4]); mg.lineWidth=1;
+  mg.beginPath(); mg.moveTo(X(Z_SHAFT),RY0); mg.lineTo(X(Z_SHAFT),RY0+RH); mg.stroke();
+  mg.setLineDash([]);
+
+  // 舵机（幽灵，在曲柄后面一层）
+  mg.strokeStyle="rgba(120,150,180,.5)"; mg.setLineDash([5,4]);
+  roundRect(mg, X(Z_SHAFT-7)-0, Y(yc-1.5), S*14, S*13.5, 6); mg.stroke(); mg.setLineDash([]);
+  mg.fillStyle="rgba(120,150,180,.6)"; mg.font="600 15px -apple-system,sans-serif";
+  mg.fillText("MG90S 舵机（在曲柄后方）", X(Z_SHAFT-7)+4, Y(yc+12.6)-4);
+
+  // 曲柄：臂 + 轮毂 + 凸耳（先画 —— 它在轭板后面一层）
+  const px=tx(0), py=Y(yb-drop);            // 销钉中心
+  mg.strokeStyle="#E67024"; mg.lineWidth=Math.max(6,S*1.7); mg.lineCap="round";
+  mg.beginPath(); mg.moveTo(X(Z_SHAFT), Y(yc)); mg.lineTo(px, py); mg.stroke();
+  mg.fillStyle="#E67024";
+  mg.beginPath(); mg.arc(X(Z_SHAFT), Y(yc), S*8.5, 0, 6.2832); mg.fill();          // 轮毂 ⌀17
+  mg.fillStyle="#B4551A";
+  mg.beginPath(); mg.arc(X(Z_SHAFT), Y(yc), S*2.45, 0, 6.2832); mg.fill();         // 舵机轴 ⌀4.9
+  mg.fillStyle="#F0A24A";
+  mg.beginPath(); mg.arc(px, py, S*5.5, 0, 6.2832); mg.fill();                     // 凸耳 ⌀11
+
+  // 轭板/竖槽（半透明盖在曲柄上 —— 重点是要看出"销钉在槽里"）
+  const scx=tx(0), scy=Y(yb);               // 槽中心
+  const hw=S*SLOT_W/2, hh=S*(SLOT_HY+SLOT_W/2);
+  roundRect(mg, scx-hw, scy-hh, hw*2, hh*2, hw);
+  mg.fillStyle="rgba(51,161,153,.30)"; mg.fill();
+  mg.strokeStyle="#33A199"; mg.lineWidth=2.4; mg.stroke();
+
+  // 滑杆（从轭板往左，被虚线断开）
+  mg.fillStyle="#33A199";
+  mg.fillRect(scx-hw, scy-SLOT_W/2*S*0.55, S*11, S*SLOT_W*0.55);
+  mg.fillStyle="rgba(51,161,153,.55)";
+  mg.fillRect(RX0, scy-SLOT_W/2*S*0.55, S*10, S*SLOT_W*0.55);
+
+  // 销钉（最上层）
+  mg.fillStyle="#F7ED73";
+  mg.beginPath(); mg.arc(px, py, S*3.0, 0, 6.2832); mg.fill();
+  mg.strokeStyle="#9C9420"; mg.lineWidth=1.6; mg.stroke();
+  mg.fillStyle="#7E7A1A";
+  mg.beginPath(); mg.arc(px, py, S*1.6, 0, 6.2832); mg.fill();
+
+  // 转角弧
+  mg.strokeStyle="rgba(230,112,36,.75)"; mg.lineWidth=2;
+  mg.beginPath(); mg.arc(X(Z_SHAFT), Y(yc), S*R_CRANK*0.62, -Math.PI/2, -Math.PI/2+deg*Math.PI/180, false); mg.stroke();
+  mg.fillStyle="#E67024"; mg.font="600 15px -apple-system,sans-serif";
+  mg.fillText("θ="+deg.toFixed(1)+"°", X(Z_SHAFT)+S*2.2, Y(yc)+S*6.2);
+
+  // 行程标注
+  if(Math.abs(t)>0.02){
+    const yArrow=Y(yc-12.2);
+    mg.strokeStyle="#7CE0A0"; mg.lineWidth=2;
+    mg.beginPath(); mg.moveTo(X(Z_SHAFT),yArrow); mg.lineTo(tx(0),yArrow); mg.stroke();
+    mg.beginPath(); mg.moveTo(tx(0),yArrow); mg.lineTo(tx(0)-7,yArrow-4); mg.lineTo(tx(0)-7,yArrow+4); mg.closePath();
+    mg.fillStyle="#7CE0A0"; mg.fill();
+    mg.font="700 16px ui-monospace,monospace";
+    mg.fillText("t = "+t.toFixed(2)+" mm", X(Z_SHAFT)+6, yArrow-7);
+  }
+  // 销钉下垂量
+  mg.fillStyle="rgba(150,176,200,.85)"; mg.font="15px -apple-system,sans-serif";
+  mg.fillText("销钉下垂 "+drop.toFixed(2)+" mm（被 13.6mm 竖槽吸收）", RX0+6, RY0+RH-7);
+
+  mg.restore();
+
+  /* ---- 左半：按钮 / 面板（另一把比例尺）---- */
+  const LX0=8, LW=RX0-24, LY0=8, LH=MH-16;
+  const S2=Math.min(LW/36, LH/34);
+  const c2x=LX0+LW/2, c2y=LY0+LH/2;
+  const BX=z=>c2x+S2*(z-(-6.3));            // 以按钮中部为基准
+  const BY=y=>c2y-S2*(y-yb);
+
+  mg.save();
+  mg.beginPath(); mg.rect(LX0,LY0,LW,LH); mg.clip();
+  // 面板剖面
+  mg.fillStyle="rgba(204,207,214,.30)";
+  mg.fillRect(BX(-30)-S2*5.0, BY(yb+14.5), S2*5.0, S2*29);
+  mg.fillStyle="rgba(120,150,180,.75)"; mg.font="600 14px -apple-system,sans-serif";
+  mg.fillText("面板", BX(-30)-S2*4.6, BY(yb+14.5)+18);
+  // 按钮：帽 + 杆 + 插座（整体随行程右移 t）
+  const bt=t;
+  mg.fillStyle="#F0AD33";
+  roundRect(mg, BX(-7.6+bt), BY(yb+13.8), S2*2.6, S2*27.6, S2*1.2); mg.fill();
+  mg.fillStyle="#C98C22";
+  mg.fillRect(BX(-5.0+bt), BY(yb+12.0), S2*16, S2*24);
+  mg.fillStyle="rgba(240,173,51,.85)";
+  roundRect(mg, BX(3.5+bt), BY(yb+5.5), S2*7.5, S2*11, 3); mg.fill();
+  // 连接销
+  mg.fillStyle="#D13D3D";
+  mg.beginPath(); mg.arc(BX(0+bt)+S2*0, BY(yb)+0, S2*1.7, 0, 6.2832); mg.fill();
+  // 基准线
+  mg.strokeStyle="rgba(120,150,180,.3)"; mg.setLineDash([4,4]);
+  mg.beginPath(); mg.moveTo(BX(-7.6), BY(yb+18)); mg.lineTo(BX(-7.6), BY(yb-18)); mg.stroke(); mg.setLineDash([]);
+  mg.fillStyle="rgba(150,176,200,.85)"; mg.font="14px -apple-system,sans-serif";
+  mg.fillText("静止位置", BX(-9.2), BY(yb-19.2));
+  mg.fillStyle="#F0AD33"; mg.font="700 15px ui-monospace,monospace";
+  mg.fillText("后移 "+t.toFixed(2)+" mm", BX(-7.6), BY(yb+19.6));
+  mg.restore();
+
+  /* ---- 中间断开：同一根滑杆 ---- */
+  const by=Y(yb)-S*SLOT_W*0.55/2, bh=S*SLOT_W*0.55;
+  mg.strokeStyle="rgba(51,161,153,.55)"; mg.lineWidth=Math.max(5,bh*0.7); mg.setLineDash([7,7]);
+  mg.beginPath(); mg.moveTo(RX0-S*10-6, by+bh/2); mg.lineTo(RX0-2, by+bh/2); mg.stroke(); mg.setLineDash([]);
+  mg.fillStyle="rgba(150,176,200,.8)"; mg.font="14px -apple-system,sans-serif";
+  mg.textAlign="center";
+  mg.fillText("同一根滑杆（刚性）", (RX0+LW-6)/2, RY0+RH-7);
+  mg.textAlign="left";
+
+  // 读数
+  document.getElementById('rd').textContent=deg.toFixed(1)+"°";
+  document.getElementById('rt').textContent=t.toFixed(2)+" mm";
+  document.getElementById('rb').textContent=t.toFixed(2)+" mm";
+}
+
+/* =========================================================================
+   第三部分：楼层判定仿真（与 App 同一套：中位窗口 3 · EMA 0.62 · 滞后 3dB · 连赢 1）
+   ========================================================================= */
+const NODES=[{name:"ELEV-2F",floor:"2F",idx:1,p:0.34},
+             {name:"ELEV-3F",floor:"3F",idx:2,p:0.66}];
+const RSSI_WINDOW=3, EMA_ALPHA=0.62, MIN_LEAD_DB=3, MIN_RSSI=-95;
+let windows={}, emas={}, judgedFloor="2F";
+
+function rssiRaw(p,node){
+  const d=Math.abs(p-node.p);
+  const base=-38 - 62*d;
+  return base + (Math.random()-0.5)*4.0;
+}
+function median(a){const b=a.slice().sort((x,y)=>x-y);return b[(b.length-1)>>1];}
+
+function judgeTick(){
+  const vals={};
+  for(const n of NODES){
+    const w=windows[n.name]||(windows[n.name]=[]);
+    w.push(rssiRaw(pos.value, n));
+    while(w.length>RSSI_WINDOW) w.shift();
+    const med=median(w);
+    emas[n.name]=(emas[n.name]==null)?med:(EMA_ALPHA*med+(1-EMA_ALPHA)*emas[n.name]);
+    vals[n.name]=emas[n.name];
+  }
+  const sorted=NODES.slice().sort((a,b)=>vals[b.name]-vals[a.name]);
+  const best=sorted[0], second=sorted[1];
+  if(vals[best.name]<MIN_RSSI){ /* 全失联，维持原判 */ }
+  else{
+    const cur=NODES.find(n=>n.floor===judgedFloor);
+    if(!cur || best.floor!==judgedFloor){
+      const lead = cur ? vals[best.name]-vals[cur.name] : 999;
+      if(lead>=MIN_LEAD_DB) judgedFloor=best.floor;
+    }
+  }
+  renderNodes(vals);
+  return judgedFloor;
+}
+
+function renderNodes(vals){
+  const box=document.getElementById('nodes');
+  const best=NODES.slice().sort((a,b)=>{
+    const av=vals?vals[a.name]:(emas[a.name]||-99), bv=vals?vals[b.name]:(emas[b.name]||-99);
+    return bv-av;
+  })[0];
+  let html="";
+  for(const n of NODES){
+    const v=vals?(vals[n.name]):(emas[n.name]!=null?emas[n.name]:rssiRaw(pos.value,n));
+    const pct=Math.max(0,Math.min(1,(v+95)/55));
+    const near=(best && best.name===n.name && n.floor===judgedFloor);
+    html+=`<div class="node ${near?'near':''}">
+      <span class="nm">${n.name}</span>
+      <span class="bar"><i style="width:${(pct*100).toFixed(1)}%;background:${near?'#3D89D9':'#2E4B67'}"></i></span>
+      <span class="db">${v.toFixed(1)} dB</span></div>`;
+  }
+  box.innerHTML=html;
+  document.getElementById('whoFloor').textContent=judgedFloor;
+  const pl=document.getElementById('poslab');
+  const pp=parseFloat(pos.value);
+  pl.textContent = pp<0.25?"1F 方向":(pp<0.5?"2F 门口":(pp<0.75?"3F 门口":"4F 方向"));
+}
+
+/* =========================================================================
+   第四部分：控制链 —— 点一次 ▲/▼，把整条链走一遍
+   ========================================================================= */
+const el=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let busy=false, autoOn=false, mechDeg=0;
+
+function log(txt,cls){
+  const b=el('logbox');
+  const d=document.createElement('div');
+  d.className=cls||'l-dim';
+  const ts=new Date().toTimeString().slice(0,8);
+  d.textContent="["+ts+"] "+txt;
+  b.insertBefore(d,b.firstChild);
+  while(b.childNodes.length>60) b.removeChild(b.lastChild);
+}
+function stage(i){
+  for(let k=0;k<6;k++) el('ch'+k).classList.toggle('on', k===i);
+}
+function allStagesOff(){ for(let k=0;k<6;k++) el('ch'+k).classList.remove('on'); }
+
+function setMech(deg){ mechDeg=deg; drawMech(deg); }
+
+async function servoPress(floor,dir){
+  // 舵机：350ms 按下 + 600ms 保持 + 350ms 收回（与固件同一节拍）
+  // 用 setInterval 而不是 requestAnimationFrame —— 演示时切到别的标签页/窗口，
+  // rAF 会被浏览器暂停、整条呼梯链就会卡住；定时器只会被降频，仍然会走完。
+  const OP=22, dur=350, hold=600, rel=350, total=dur+hold+rel;
+  const t0=performance.now();
+  return new Promise(res=>{
+    const id=setInterval(()=>{
+      const e=performance.now()-t0;
+      let deg;
+      if(e<dur) deg=OP*(e/dur);
+      else if(e<dur+hold) deg=OP;
+      else if(e<total) deg=OP*(1-(e-dur-hold)/rel);
+      else { clearInterval(id); setMech(0); res(); return; }
+      setMech(deg);
+    },25);
+  });
+}
+
+async function doCall(dir, opts){
+  if(busy) return;
+  const floor=judgedFloor;
+  if(floor!=="2F" && floor!=="3F"){
+    log(`× 拒绝：${floor} 没有呼梯装置（只有 2F/3F 装了）`,'l-bad');
+    return;
+  }
+  const node = floor==="2F" ? "ELEV-2F" : "ELEV-3F";
+  const idx = floor==="2F" ? 1 : 2;
+  const btn = dir==="UP" ? "▲ 上行" : "▼ 下行";
+  const cmd = dir==="UP" ? "UP" : "DOWN";
+  busy=true;
+  allStagesOff();
+
+  stage(0);
+  log(`→ 手机 App：点了 ${btn}（你所在 = ${floor}，来源：蓝牙判层）`,'l-send');
+  await sleep(opts&&opts.fast?80:260);
+
+  stage(1);
+  log(`→ BLE 写入 "${cmd}" → ${node}`,'l-send');
+  await sleep(opts&&opts.fast?80:220);
+
+  stage(2);
+  log(`→ ESP32 收到：拉 ${dir==="UP"?"D13":"D12"} 出 50Hz PWM`,'l-send');
+  await sleep(opts&&opts.fast?80:220);
+
+  stage(3);
+  const p=servoPress(floor,dir);
+  // 厅外面板同时被按亮
+  const litStart=performance.now();
+  const litTimer=setInterval(()=>{
+    const e=performance.now()-litStart;
+    panelLit[idx]=Math.max(0, Math.min(1, e<600? e/300 : Math.max(0,1-(e-600)/700)));
+    if(e>1400) { panelLit[idx]=0; clearInterval(litTimer); }
+  },33);
+  await p;
+  await sleep(60);
+  stage(4);
+  await sleep(opts&&opts.fast?120:300);
+  log(`← ${floor}|OK:${cmd}   （= 舵机动作完成，不是"车动了"）`,'l-ok');
+  await sleep(opts&&opts.fast?120:260);
+
+  stage(5);
+  log(`→ 轿厢开过来：目标 ${floor}`,'l-send');
+  carTargetY=carCenterY(idx); carIndex=idx;
+  const t0=performance.now();
+  while(Math.abs(carTargetY-carY)>0.01 && performance.now()-t0<6000){ await sleep(60); }
+  await sleep(opts&&opts.fast?400:600);
+  log(`✓ 到站 ${floor}，开门`,'l-ok');
+  await sleep(opts&&opts.fast?1200:1600);
+  allStagesOff();
+  log('———— 一次呼梯结束 ————','l-dim');
+  busy=false;
+}
+
+/* =========================================================================
+   第五部分：界面绑定 / 键盘 / 自动演示 / 对外小接口
+   ========================================================================= */
+const pos=el('pos');
+pos.addEventListener('input',()=>{ judgeTick(); });
+
+const floorBox=el('floors');
+floors.forEach((f,i)=>{
+  const b=document.createElement('div');
+  b.className='fl'+(f==='2F'||f==='3F'?'':' no');
+  b.textContent=f; b.dataset.i=i;
+  b.onclick=()=>{
+    if(f!=='2F'&&f!=='3F'){ log(`× ${f} 没有装置，手动选了也会被拒绝`,'l-bad'); return; }
+    carTargetY=carCenterY(i); carIndex=i; log(`→ 手动看 ${f} 的轿厢（只是看，不是呼梯）`,'l-dim');
+  };
+  floorBox.appendChild(b);
+});
+el('bUp').onclick=()=>doCall('UP');
+el('bDn').onclick=()=>doCall('DOWN');
+
+el('bReset').onclick=()=>{
+  autoOn=false; el('bAuto').classList.remove('on'); el('bAuto').textContent='▶ 自动演示';
+  busy=false; allStagesOff(); setMech(0);
+  carTargetY=carCenterY(1); carIndex=1;
+  pos.value=0.34; judgeTick();
+  log('↺ 已复位','l-dim');
+};
+
+/* ---- 自动演示：一段"走近 → 呼梯 → 到站开门 → 再走一层 → 再呼梯"的循环 ---- */
+el('bAuto').onclick=()=>{
+  autoOn=!autoOn;
+  el('bAuto').classList.toggle('on',autoOn);
+  el('bAuto').textContent = autoOn ? '⏸ 停止演示' : '▶ 自动演示';
+  log(autoOn?'▶ 开始自动演示（可全屏/录屏）':'⏸ 已停止自动演示','l-dim');
+};
+
+async function autoLoop(){
+  if(!autoOn) return;
+  pos.value=0.30; pos.dispatchEvent(new Event('input'));
+  await sleep(900);
+  if(!autoOn) return;
+  await doCall('UP',{fast:true});
+  if(!autoOn) return;
+  await sleep(700);
+  // 走进电梯、坐到 3F（这里演"人挪位，判定跟着变"）
+  log('→ （演示）人往 3F 方向走，蓝牙判定跟着变…','l-dim');
+  const t0=performance.now();
+  const from=parseFloat(pos.value), to=0.70;
+  while(autoOn && performance.now()-t0<2200){
+    const k=Math.min(1,(performance.now()-t0)/2200);
+    pos.value=(from+(to-from)*k).toFixed(3);
+    pos.dispatchEvent(new Event('input'));
+    await sleep(60);
+  }
+  if(!autoOn) return;
+  await sleep(600);
+  await doCall('DOWN',{fast:true});
+  if(!autoOn) return;
+  await sleep(1400);
+  autoLoop();
+}
+
+document.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k==='u') doCall('UP');
+  else if(k==='d') doCall('DOWN');
+  else if(k>='1'&&k<='4'){ const i=parseInt(k,10)-1; carTargetY=carCenterY(i); carIndex=i;
+    log(`→ 手动看 ${floors[i]} 的轿厢（只是看，不是呼梯）`,'l-dim'); }
+  else if(k==='a'){ el('bAuto').click(); }
+});
+
+/* ---- 数据来源：默认"模拟"；带 ?api=http://ip:8899 时尝试拉真数据 ---- */
+const qs=new URLSearchParams(location.search);
+const apiBase=qs.get('api');
+function setBadge(kind,txt){
+  const b=el('badge');
+  b.className = kind==='real' ? 'real' : 'sim';
+  b.textContent='数据来源：'+txt;
+}
+if(apiBase){
+  setBadge('sim','接口（未连上，先用模拟）');
+  setInterval(async()=>{
+    try{
+      const r=await fetch(apiBase.replace(/\/$/,'')+'/api/status',{cache:'no-store'});
+      const j=await r.json();
+      setBadge('real','接口 '+apiBase+(j.carSource?('（'+j.carSource+'）'):''));
+      if(j.near && (j.near==='2F'||j.near==='3F')) judgedFloor=j.near;
+      if(j.car && j.car!=='1F'&&j.car!=='4F'){
+        const i=floors.indexOf(j.car);
+        if(i>=0 && !busy){ carTargetY=carCenterY(i); carIndex=i; }
+      }
+    }catch(e){ setBadge('sim','接口没连上（模拟中）'); }
+  },800);
+}
+
+/* ---- 启动 ---- */
+fitCanvas();
+drawMech(0);
+judgeTick();
+setInterval(()=>{ if(!document.hidden && !apiBase) judgeTick(); },200);
+log('本页 = 井道 3D + 控制链 + 机构剖视。全程本地文件，不联网。','l-dim');
+log('红色线路：绝不自动呼梯 —— 只有你点 ▲/▼ 才会发命令。','l-dim');
+
+let last=performance.now();
+function tick(dt){
+  if(AUTO_ROTATE && !dragging) yaw+=dt*AUTO_SPIN;
+  const moving=Math.abs(carTargetY-carY)>0.002;
+  carY+=(carTargetY-carY)*Math.min(1,dt*5);
+  cwY=cwYFor(carY);
+  const still=Math.abs(carTargetY-carY)>0.002;
+  if(still){ if(doorTarget){ doorTarget=0; if(doorTimer) clearTimeout(doorTimer); } }
+  else if(moving){ openDoors(1800); }
+  doorOpen+=(doorTarget-doorOpen)*Math.min(1,dt*7);
+  if(Math.abs(doorTarget-doorOpen)<=0.002) doorOpen=doorTarget;
+  draw();
+}
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  tick(dt);
+  requestAnimationFrame(loop);
+}
+draw();
+requestAnimationFrame(loop);
+// 兜底：页面被切到后台时 rAF 会停，这里用定时器把状态推着走（降级但不卡死）
+setInterval(()=>{ if(document.hidden) tick(0.05); },80);
+autoLoop();
+
+/* ---- 给"录视频/自动化"用的小接口（不影响正常使用）---- */
+window.DEMO={
+  call:(d)=>doCall(d,{fast:true}),
+  setPos:(p)=>{ pos.value=p; pos.dispatchEvent(new Event('input')); },
+  judge:()=>judgeTick(),
+  setFloor:(f)=>{ const i=floors.indexOf(f); if(i>=0){carTargetY=carCenterY(i);carIndex=i;} },
+  setMech:(d)=>setMech(d),
+  auto:(on)=>{ autoOn=!!on; el('bAuto').classList.toggle('on',autoOn); if(autoOn) autoLoop(); },
+  busy:()=>busy
+};
+</script>
+</body>
+</html>
