@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>演示幻灯片 · 近距呼梯 + 井道透视</title>
+<style>
+  :root{ --bg:#060b12; --panel:#0b1624; --line:#1b2b3f; --dim:#8aa0b6; --fg:#e6f0fa;
+         --accent:#2ecbff; --ok:#7CE0A0; --warn:#ffcc66; --bad:#ff6b6b; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:radial-gradient(circle at 50% -20%,#13263e 0%,#060b12 62%);color:var(--fg);
+       font:16px/1.72 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden}
+  #bar{position:fixed;left:0;top:0;height:3px;background:linear-gradient(90deg,#2ecbff,#7CE0A0);width:0;z-index:9;transition:width .25s}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;
+         padding:5.2vh 6vw 7vh;gap:1.6vh}
+  .slide.active{display:flex}
+  .kicker{color:var(--accent);font-size:clamp(12px,1.05vw,15px);letter-spacing:2.5px;font-weight:600}
+  h1{font-size:clamp(30px,4.4vw,62px);line-height:1.14;margin:0;font-weight:800;letter-spacing:-.5px}
+  h2{font-size:clamp(22px,2.6vw,38px);line-height:1.2;margin:0;font-weight:750}
+  .lead{color:#b9cbdd;font-size:clamp(14px,1.32vw,20px);max-width:62ch}
+  ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:.85vh}
+  li{font-size:clamp(14px,1.32vw,20px);color:#cfe0ef}
+  li b{color:#fff}
+  .dim{color:var(--dim)} .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:2.2vw;align-items:start}
+  .cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6vw;align-items:start}
+  .box{background:rgba(11,22,36,.62);border:1px solid var(--line);border-radius:14px;padding:1.5vh 1.3vw}
+  .box h3{margin:0 0 .8vh;font-size:clamp(13px,1.18vw,18px);font-weight:650}
+  .box.good{border-color:#25543c;background:rgba(124,224,160,.06)}
+  .box.bad{border-color:#5a2b2b;background:rgba(255,107,107,.06)}
+  .box ul{padding-left:1.05em}
+  .box li{font-size:clamp(12.5px,1.16vw,17.5px)}
+  table{border-collapse:collapse;width:100%;font-size:clamp(12.5px,1.16vw,18px)}
+  th,td{border:1px solid var(--line);padding:.75vh .8vw;text-align:left;font-variant-numeric:tabular-nums}
+  th{color:var(--dim);font-weight:500}
+  code{background:#0a1523;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.92em}
+  .big{font-size:clamp(28px,3.4vw,52px);font-weight:800;font-variant-numeric:tabular-nums;line-height:1.05}
+  .flow{display:flex;align-items:center;gap:.7vw;flex-wrap:wrap}
+  .step{background:#0d1c2c;border:1px solid #23405b;border-radius:11px;padding:1.1vh 1vw;font-size:clamp(12px,1.1vw,17px)}
+  .step b{display:block;color:#fff;font-size:1.06em}
+  .arrow{color:var(--accent);font-size:1.2em}
+  .quote{border-left:4px solid var(--accent);background:rgba(46,203,255,.07);border-radius:10px;
+         padding:1.6vh 1.2vw;font-size:clamp(15px,1.5vw,24px);font-weight:600;color:#fff}
+  .nav{position:fixed;right:14px;bottom:12px;display:flex;gap:7px;align-items:center;z-index:10}
+  .nav button{font:inherit;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid #263f59;
+              background:#0f2136;color:#dbe7f3;cursor:pointer}
+  .nav button:hover{background:#16324e}
+  #ctr{color:var(--dim);font-size:12.5px;min-width:56px;text-align:right;font-variant-numeric:tabular-nums}
+  .foot{position:fixed;left:22px;bottom:14px;color:#4f6479;font-size:12.5px;z-index:10}
+  .tag{display:inline-block;font-size:clamp(11px,.95vw,14px);color:var(--dim);border:1px solid var(--line);
+       border-radius:99px;padding:2px 10px;margin-right:7px}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+
+<!-- ===================== 1 封面 ===================== -->
+<section class="slide active">
+  <div class="kicker">ELEVATOR · 电梯厅的最后一米</div>
+  <h1>靠近电梯，<br>按钮自己浮出来</h1>
+  <p class="lead">
+    手机用 BLE 信号强度判断你站在<b>哪一层、离井道多近</b> —— 不用配对、不用掏卡；
+    点一下（或说一句），<b>舵机真的把厅外按钮按下去</b>。
+    井道本身在 AR 里<b>透明可见</b>。
+  </p>
+  <div>
+    <span class="tag">2 × ESP32</span><span class="tag">Android（Kotlin）</span>
+    <span class="tag">iOS ARKit</span><span class="tag">BLE GATT</span>
+    <span class="tag">零第三方 BLE 库</span>
+  </div>
+</section>
+
+<!-- ===================== 2 痛点 ===================== -->
+<section class="slide">
+  <div class="kicker">问题</div>
+  <h2>电梯厅里的三件小事</h2>
+  <div class="cols3">
+    <div class="box"><h3>① 手是满的</h3><p class="dim">拎着东西、戴着厚手套、抱着孩子 —— 那个按钮就是按不到。</p></div>
+    <div class="box"><h3>② 等得没道理</h3><p class="dim">按完才发现车在 4F；黑箱里发生了什么，你完全不知道。</p></div>
+    <div class="box"><h3>③ 井道是黑箱</h3><p class="dim">墙后面有什么、车在哪、往哪走 —— 没有任何界面能告诉你。</p></div>
+  </div>
+  <p class="lead">我们只动<b>“人伸手按按钮”</b>这一件事，不碰电梯任何电气系统。</p>
+</section>
+
+<!-- ===================== 3 怎么做 ===================== -->
+<section class="slide">
+  <div class="kicker">怎么做</div>
+  <h2>四步，全部发生在你走向电梯的 3 秒里</h2>
+  <div class="flow">
+    <div class="step"><b>① 靠近</b>手机听 BLE 广播的 RSSI<br><span class="dim">不配对、不连接</span></div>
+    <span class="arrow">→</span>
+    <div class="step"><b>② 判层</b>哪些装置近？哪层<br><span class="dim">扫到信号立刻重判 · 节流 40 ms</span></div>
+    <span class="arrow">→</span>
+    <div class="step"><b>③ 浮出</b>右侧浮起“2F 上行”<br><span class="dim">点一下 / 说一句</span></div>
+    <span class="arrow">→</span>
+    <div class="step"><b>④ 按下</b>BLE 写命令 → <b>舵机压按钮</b><br><span class="dim">回执 2F|OK:UP</span></div>
+  </div>
+  <div class="cols" style="margin-top:.6vh">
+    <div class="box"><h3>为什么判层要放在手机里</h3>
+      <p class="dim">RSSI 是手机自己拿到的：<b>不用连接就能判断</b>，所以是“瞬时”的；<br>
+      连接只在真正按下的那一刻建立。</p></div>
+    <div class="box"><h3>为什么用舵机而不是改造电路</h3>
+      <p class="dim">舵机按的是<b>公共呼叫按钮</b>，等于“有人伸手按了一下”。<br>
+      不碰控制柜、不改线路，装置<b>10 秒可拆</b>。</p></div>
+  </div>
+</section>
+
+<!-- ===================== 4 真的按下去了 ===================== -->
+<section class="slide">
+  <div class="kicker">硬件</div>
+  <h2>不是模拟点击，是真的手</h2>
+  <div class="cols">
+    <div class="box good"><h3 class="ok">真的按下去</h3>
+      <ul>
+        <li>舵机行程 <b>350 ms 按下 + 600 ms 保持 + 350 ms 收回</b></li>
+        <li>呼梯灯亮 = 电梯系统收到了这次呼叫</li>
+        <li>两块板：<b>2F / 3F</b>（D13 上行 · D12 下行）</li>
+        <li>回执 <code>2F|OK:UP</code> 的含义：<b>“舵机动作完成了”</b></li>
+      </ul></div>
+    <div class="box"><h3>多个人同时用</h3>
+      <ul>
+        <li>一块 ESP32 最多同时服务 <b>3 台手机</b></li>
+        <li>状态用 notify <b>广播</b>：谁都能看到这台电梯在动</li>
+        <li>一台手机断开<b>不影响</b>别人</li>
+        <li>同一套 GATT 协议，安卓 / iOS 共用</li>
+      </ul></div>
+  </div>
+</section>
+
+<!-- ===================== 5 井道 ===================== -->
+<section class="slide">
+  <div class="kicker">井道透视</div>
+  <h2>把墙后面那件事画出来</h2>
+  <div class="cols">
+    <div class="box"><h3>看得见的规矩</h3>
+      <ul>
+        <li>手指拖动旋转 / 俯仰，<b>不自动转</b></li>
+        <li><b>只有 2F / 3F 画全</b>（这两层真的能呼）</li>
+        <li>1F / 4F 是<b>半透明虚影</b>：结构在，但不冒充可用</li>
+        <li>尺寸 / 逐件配色与 AR 规格文档<b>完全一致</b></li>
+      </ul></div>
+    <div class="box"><h3>一条不会越界的红线</h3>
+      <ul>
+        <li>轿厢随<b>最近楼层</b>平滑移动 —— 纯视觉</li>
+        <li><b>永远不会自动帮你呼梯</b>，一定要你手动点</li>
+        <li>位置来源是“真的”还是“模拟的”，<b>界面上始终标出来</b></li>
+      </ul></div>
+  </div>
+</section>
+
+<!-- ===================== 6 诚实边界 ===================== -->
+<section class="slide">
+  <div class="kicker">我们主动先说</div>
+  <h2>能力边界：先说做不到的</h2>
+  <div class="cols">
+    <div class="box good"><h3 class="ok">真的能做到（举四条最硬的）</h3>
+      <ul>
+        <li>不用配对的近距判层，判定 <b>40~200 ms</b>（扫到信号立刻重判、节流 40 ms，200 ms 心跳兜底）</li>
+        <li>舵机<b>真的把按钮按下去</b>，回执可验证</li>
+        <li>AR / 3D 井道，几何与配色有规格文档</li>
+        <li>真实位置两条路都已写代码（见下一页）</li>
+      </ul></div>
+    <div class="box bad"><h3 class="bad">明确做不到</h3>
+      <ul>
+        <li><b>测不出轿厢真实位置</b>（现有两块板只会“按”）</li>
+        <li><b>控制不了电梯</b>：我们只做“厅外呼梯”</li>
+        <li>不知道行进方向 / 还有几秒到</li>
+        <li>AR 没有遮挡；跨楼层位姿定位还没做</li>
+      </ul></div>
+  </div>
+  <div class="quote">“呼梯是真的；位置在没装传感器之前是推测的 —— 推测，我们就标出来。”</div>
+</section>
+
+<!-- ===================== 7 真实位置 ===================== -->
+<section class="slide">
+  <div class="kicker">真位置</div>
+  <h2>“车在几楼”这件事，我们写了两条路</h2>
+  <div class="cols">
+    <div class="box"><h3>B · 听电梯到站的“叮”声</h3>
+      <ul>
+        <li>一个麦克风模块（2~3 元）+ 4 kHz 采样</li>
+        <li>40 ms 窗口算 <b>RMS + 过零率</b>，连续 2 窗命中 + 3 秒不应期</li>
+        <li>报文形状与按钮节点<b>完全相同</b>：<code>2F|CAR:CHIME</code></li>
+        <li>固件已编译通过 ✓，标定台已就绪 ✓，<b>待现场标定</b></li>
+      </ul></div>
+    <div class="box"><h3>D · 摄像头读电梯自己的楼层显示</h3>
+      <ul>
+        <li>纯几何七段识别，不用通用 OCR</li>
+        <li>单帧 <b>84~89% 读对、0~2% 读错</b>，其余输出“未识别”</li>
+        <li><b>宁可说没看清，也绝不猜</b>；实时要连续 3 帧一致</li>
+        <li>需要数字高度 ≥ 20 px（现场照片确认）</li>
+      </ul></div>
+  </div>
+  <p class="lead dim">两条路都没装的时候，界面上的轿厢位置一定带“模拟”标记 —— 这条不能省。</p>
+</section>
+
+<!-- ===================== 8 瞬时/不抖 ===================== -->
+<section class="slide">
+  <div class="kicker">实测数字</div>
+  <h2>“瞬时”和“不抖”，我们是拿数字说的</h2>
+  <table>
+    <thead><tr><th>场景（20 s）</th><th>朴素做法：谁强算谁</th><th>我们的算法</th><th>换现场参数后</th></tr></thead>
+    <tbody>
+      <tr><td>站在某一层装置旁</td><td>1 次</td><td class="ok"><b>1 次</b>（只有首次上线）</td><td>1 次</td></tr>
+      <tr><td><b>站在两层正中间</b>（最坏位置）</td><td class="bad"><b>25.7 次横跳</b></td><td class="warn">4.3 次</td><td class="ok"><b>1.3 次</b></td></tr>
+      <tr><td>从 2F 走到 3F（3 s 走完）</td><td>1.9 s</td><td>2.1 s</td><td>2.5 s</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>算法 = 中位窗口 3 · EMA 0.62 · <b>滞后 3 dB</b> · 连赢 1 次 · 采样 200 ms（把 App 的逻辑逐行搬进网页跑仿真，6 个固定种子取平均，可复现）</li>
+    <li>仿真故意按<b>最保守的 200 ms 采样</b>跑（真机上每扫到一次新信号就立刻重判、节流 40 ms，只会更快）；</li>
+    <li>“站在某层旁边”时判定在<b>一个采样周期（200 ms）</b>内出结果 → 这就是瞬时手感；</li>
+    <li>换层慢<b>不是算法慢</b>，是几何上你得真的走近 —— 把滞后调大只多花 0.3 s，却把最坏位置的横跳压掉 <b>19 倍</b>。</li>
+  </ul>
+</section>
+
+<!-- ===================== 9 怎么演 ===================== -->
+<section class="slide">
+  <div class="kicker">现场</div>
+  <h2>我们准备了两套演示</h2>
+  <div class="cols">
+    <div class="box good"><h3 class="ok">A · 真机（首选）</h3>
+      <ul>
+        <li>手机靠近 → 按钮浮出 → 点一下</li>
+        <li>墙上：<b>舵机动、呼梯灯亮</b></li>
+        <li>手机收到 <code>2F|OK:UP</code></li>
+        <li>抬头：井道透视叠在走廊上</li>
+      </ul></div>
+    <div class="box"><h3>B · 30 秒产品演出（保险）</h3>
+      <ul>
+        <li>一页把全流程演完，<b>不需要电梯、不需要硬件、不需要网络</b></li>
+        <li>可全屏放映、键盘控制（空格 / ← → / R）</li>
+        <li>演出里“位置来源”会从<b>模拟</b>切到<b>摄像头读到 2F</b></li>
+        <li>真机万一在会场出问题，靠这一页讲完</li>
+      </ul></div>
+  </div>
+  <p class="lead dim">另外还备了：判定调参器、七段识别器（可当场自测准确率）、到站“叮”声标定台。</p>
+</section>
+
+<!-- ===================== 10 技术栈 ===================== -->
+<section class="slide">
+  <div class="kicker">怎么搭起来的</div>
+  <h2>技术栈与分工</h2>
+  <div class="cols3">
+    <div class="box"><h3>硬件 / 固件</h3>
+      <ul><li>ESP32 ×2（Arduino C++）</li><li>舵机 ×2 + 外部 5V</li>
+      <li>可加到站节点：MAX9814 麦克风</li>
+      <li>自定义 BLE GATT 协议</li></ul></div>
+    <div class="box"><h3>Android App</h3>
+      <ul><li>Kotlin，自己写 BLE 管理（扫描 / 订阅 / 写队列）</li>
+      <li>楼层判定：中位数 + EMA + 滞后 + 连胜</li>
+      <li>本地 HTTP 接口（给队友 App 调，`/api/status` `/api/call`）</li>
+      <li>软件 3D 渲染井道（无第三方 3D 引擎）</li></ul></div>
+    <div class="box"><h3>iOS / AR</h3>
+      <ul><li>ARKit + LiDAR 单层室内导航（队友）</li>
+      <li>井道模型按规格文档对齐</li>
+      <li>近距呼梯的悬浮按钮交互规格已交付</li></ul></div>
+  </div>
+  <p class="lead">交付物是一整套：固件、App、协议文档、AR 规格、到站检测方案、演示手册与能力边界表。</p>
+</section>
+
+<!-- ===================== 11 结尾 ===================== -->
+<section class="slide">
+  <div class="kicker">一句话</div>
+  <h1>不碰电梯，只替人按下那一下。</h1>
+  <p class="lead">
+    呼梯是真的（舵机真按、回执可查）；位置在装传感器之前是推测的 —— <b>推测我们就标出来</b>，
+    而且把“变真”的两条路都已经写好了。
+  </p>
+  <div class="quote">手不用抬，按钮自己来找你；墙后面那件事，我们画给你看。</div>
+</section>
+
+<div class="foot">← → / 空格 翻页 · F 全屏 · Home/End 首尾</div>
+<div class="nav">
+  <button id="prev">← 上一页</button>
+  <span id="ctr">1 / 11</span>
+  <button id="next">下一页 →</button>
+</div>
+
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+let i = 0;
+function show(n){
+  i = Math.max(0, Math.min(slides.length-1, n));
+  slides.forEach((s,k)=> s.classList.toggle('active', k===i));
+  document.getElementById('ctr').textContent = (i+1)+' / '+slides.length;
+  document.getElementById('bar').style.width = ((i+1)/slides.length*100)+'%';
+  try{ history.replaceState(null,'','#'+(i+1)); }catch(e){}
+}
+document.getElementById('prev').onclick=()=>show(i-1);
+document.getElementById('next').onclick=()=>show(i+1);
+document.addEventListener('keydown',(e)=>{
+  if(e.code==='ArrowRight'||e.code==='Space'||e.code==='PageDown'||e.code==='Enter'){ e.preventDefault(); show(i+1); }
+  else if(e.code==='ArrowLeft'||e.code==='PageUp'){ e.preventDefault(); show(i-1); }
+  else if(e.code==='Home'){ show(0); }
+  else if(e.code==='End'){ show(slides.length-1); }
+  else if(e.code==='KeyF'){
+    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+    else if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  }
+});
+// 点右半边 = 下一页，左半边 = 上一页（避开按钮）
+document.addEventListener('click',(e)=>{
+  if(e.target.closest('.nav')) return;
+  if(e.clientX > innerWidth*0.5) show(i+1); else show(i-1);
+});
+const h = parseInt((location.hash||'').replace('#',''),10);
+show(isFinite(h)&&h>=1? h-1 : 0);
+window.__deck = { show, count: slides.length, get index(){return i;} };
+</script>
+</body>
+</html>

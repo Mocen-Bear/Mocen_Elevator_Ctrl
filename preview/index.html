@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>演示台 · 什么时候用哪个</title>
+<style>
+  :root{ --bg:#070D16; --panel:#0b1624; --line:#1b2b3f; --dim:#7f93a8; --fg:#dbe7f3; --accent:#2ecbff; --ok:#7CE0A0; --warn:#ffcc66; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(circle at 50% -10%,#12233a 0%,#070D16 60%);
+       color:var(--fg);font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:26px 22px 60px}
+  .wrap{max-width:1000px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 4px}
+  h1 .p{font-size:12px;font-weight:400;color:var(--accent);border:1px solid #1d3d58;background:#0b1a29;border-radius:99px;padding:2px 10px;vertical-align:middle;margin-left:8px}
+  .sub{color:var(--dim);font-size:13.5px;margin-bottom:18px}
+  .order{background:rgba(46,203,255,.06);border:1px solid #1d3d58;border-left:3px solid var(--accent);
+         border-radius:10px;padding:12px 16px;font-size:13.5px;margin-bottom:20px}
+  .order b{color:#fff}
+  .order code{background:#0b1624;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px}
+  .card{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;
+        background:rgba(11,22,36,.7);border:1px solid var(--line);border-radius:12px;
+        padding:14px 16px;margin-bottom:11px;transition:border-color .15s}
+  .card:hover{border-color:#2b4c68}
+  .card.hero{border-color:#26547c;background:linear-gradient(180deg,rgba(46,203,255,.07),rgba(11,22,36,.7))}
+  .card h2{font-size:16px;margin:0 0 3px;font-weight:650}
+  .card .tag{font-size:11.5px;color:var(--dim);border:1px solid var(--line);border-radius:99px;padding:1px 8px;margin-left:7px;font-weight:400}
+  .card p{margin:0;color:var(--dim);font-size:13.5px}
+  .card p b{color:#cfe2f2;font-weight:600}
+  .go{display:inline-block;white-space:nowrap;text-decoration:none;font-size:14px;
+      padding:9px 16px;border-radius:9px;border:1px solid #2b7fb2;color:#eaf6ff;
+      background:linear-gradient(#1d5f8f,#134663)}
+  .go:hover{filter:brightness(1.12)}
+  .go.ghost{background:#12263c;border-color:#263f59;color:var(--fg)}
+  .foot{color:var(--dim);font-size:12.5px;margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
+  .foot code{background:#0b1624;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12px}
+  .sec{font-size:12.5px;color:var(--dim);letter-spacing:1px;margin:22px 0 9px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>演示台 <span class="p">现场不用找文件</span></h1>
+  <div class="sub">
+    本页列出的 <b><span id="nPages">?</span> 个页面</b> + 这个演示台（<code>index.html</code>）都在同一个文件夹里，离线可开（双击即可，不用服务器）。
+    <br>唯一例外是 ⑦ 蓝牙控制台：它用浏览器的 <b>Web 蓝牙</b>，要"安全上下文"（建议用 <code>http://localhost</code> 打开，见文末）。
+    下面按 <b>"什么时候用"</b> 排序，不是按重要性排。
+  </div>
+
+  <div class="order">
+    <b>上台顺序（推荐）：</b> ⓪ 用 <code>deck.html</code>（11 页，← → 翻页）当骨架讲 →
+    ① <code>storyboard.html</code> 放映模式演一遍（30 秒）→
+    ② 真机：手机 App 呼梯 → ③ <code>elevator_ui_preview.html</code> 讲界面 →
+    ④ <code>elevator_3d_preview.html</code> 手指转井道 → ⑤ 被问"怎么知道在几楼"时开
+    <code>floor_display_reader.html</code>，被问"会不会乱跳"时开 <code>rssi_floor_sim.html</code>。
+    <br><b>万一手机会场出问题：</b> 整个演示只用 ⓪ + ① 就能讲完；
+    若是<b>手机扫不到装置</b>，用笔记本 Chrome 开 ⑦ <code>ble_console.html</code>，直接发 <code>UP</code>/<code>DOWN</code>。
+  </div>
+
+  <div class="card hero">
+    <div>
+      <h2>⓪ 演示幻灯片（11 页） <span class="tag">演示 / 演示骨架</span></h2>
+      <p>从痛点 → 四步流程 → 硬件 → 井道 → <b>能力边界</b> → 真实位置两条路 → <b>实测数字</b> → 演示方案 → 技术栈。
+      <br><b>← / → / 空格</b> 翻页 · <b>F</b> 全屏 · <b>Home/End</b> 首尾 · 也可点屏幕左右半边 · 地址栏 <code>#8</code> 可直达第 8 页。</p>
+    </div>
+    <a class="go" href="deck.html">打开幻灯片 ▸</a>
+  </div>
+
+  <div class="card hero">
+    <div>
+      <h2>① 30 秒产品演出 <span class="tag">演示 / 录屏 · 保险</span></h2>
+      <p>一页演完：走近 → 按钮浮出 → 点按 → <b>舵机真的按下</b> → 呼梯灯亮 → 井道透视 → 轿厢下来 → 门开 → 再按一次下行。<br>
+      <b>点「⛶ 放映模式」或按 F</b> 全屏；放映中 <b>空格</b>=暂停 · <b>←/→</b>=前后 2 秒 · <b>R</b>=重播 · <b>H</b>="位置来源"标注开关。</p>
+    </div>
+    <a class="go" href="storyboard.html">打开演出 ▸</a>
+  </div>
+
+  <div class="card">
+    <div>
+      <h2>② 悬浮按钮 / 全屏电梯页 <span class="tag">讲交互时用</span></h2>
+      <p>靠近电梯时按钮从右边浮出、点一下呼梯、<b>按住向左拖进全屏电梯页</b>、▲/▼ 呼梯。这一页专门用来<b>讲"人在走廊里的操作"</b>。</p>
+    </div>
+    <a class="go ghost" href="elevator_ui_preview.html">打开 ▸</a>
+  </div>
+
+  <div class="card">
+    <div>
+      <h2>③ 真 3D 井道（可手指旋转） <span class="tag">讲造型时用</span></h2>
+      <p>真的 3D：<b>手指拖动旋转</b>（不自动转）。<b>只有 1F/2F 画全</b>，B/3F 是半透明虚影；轿厢随最近楼层靠近，
+      <b>到站会自动开门</b>（停约 1.8 秒再关）—— 但<b>永远不会自动呼梯</b>。</p>
+    </div>
+    <a class="go ghost" href="elevator_3d_preview.html">打开 ▸</a>
+  </div>
+
+  <div class="card">
+    <div>
+      <h2>④ 摄像头读电梯楼层显示 <span class="tag">⚠️ 这条路现已搁置 · 留作原型/备用</span></h2>
+      <p>三种模式：<b>离线自测</b>（当场出准确率：单帧 84~89% 读对、0~2% 读错，其余输出"未识别"）·
+      <b>上传现场照片</b>（出门前拍的那张）· <b>摄像头实时</b>。
+      关键：<b>宁可说"没看清"，也绝不猜</b>；实时要连续 3 帧一致才采纳。<br>
+      现在演示用的是<b>蓝牙判层</b>（你拿着手机坐在轿厢里，靠近哪层显示哪层）；这一页留作"原理可讲"的原型。</p>
+    </div>
+    <a class="go ghost" href="floor_display_reader.html">打开 ▸</a>
+  </div>
+
+  <div class="card">
+    <div>
+      <h2>⑤ 楼层判定仿真 / 现场调参 <span class="tag">被问"会不会乱跳"时用</span></h2>
+      <p>把 App 里的判定算法<b>逐行搬进网页</b>，配室内传播模型 + 噪声跑：
+      站在某层装置旁 20 s <b>0 次抖动</b>（首判 200 ms）；站在两层<b>正中间</b>朴素做法横跳 25.7 次，
+      我们的算法 4.3 次，换成推荐现场参数（4.5 dB / 连赢 2）只剩 <b>1.3 次</b>。<br>
+      页面上三个按钮 = 三组对照实验；也可以直接拖"我"的位置、拖参数看判定怎么变。</p>
+    </div>
+    <a class="go ghost" href="rssi_floor_sim.html">打开 ▸</a>
+  </div>
+
+  <div class="card">
+    <div>
+      <h2>⑥ 到站"叮"声标定台 <span class="tag">只有装了到站检测节点才用</span></h2>
+      <p>把固件里那套 DSP（4 kHz 采样 → 40 ms 窗口 → RMS + 过零率）原样搬到网页，
+      用麦克风<b>边听边出数</b>，最后直接给出能粘回 <code>chime_node.ino</code> 的 <code>#define</code> 那几行。<br>
+      先点<b>「离线自测」</b>（不用麦克风）验证逻辑：静音 0 次、1200 Hz"叮"报 1 次且频率读回 1200、
+      400 Hz 强音 0 次、宽带噪声会命中（已标注为已知边界）。<br>
+      <b>它今晚抓出过一个真 bug</b>：固件里过零只数上升沿、却用了"上下沿"的公式，频率被算小一半 —— 已修。</p>
+    </div>
+    <a class="go ghost" href="chime_calib.html">打开 ▸</a>
+  </div>
+
+  <div class="card">
+    <div>
+      <h2>⑦ 现场蓝牙控制台 <span class="tag">备用 / 调试 · 手机出问题时用</span></h2>
+      <p>手机 App 扫不到装置时，用<b>笔记本 Chrome</b> 打开这一页：选 <code>ELEV-1F</code>（或 <code>ELEV-2F</code>）→ 点 <code>UP</code>/<code>DOWN</code> 直接呼梯，
+      回执（<code>1F|OK:UP</code>）实时出现在页面上；也能连 <code>CHIME-1F</code> 看它报不报 <code>CAR:CHIME</code>（现场标"叮"声用）。<br>
+      和固件的 UUID / 命令<b>逐字一致</b>（已用脚本比对过）。页面的协议速查表把两条协议都印在里面，走廊里不用翻文档。<b>它没有任何定时器，不会自动发命令。</b></p>
+    </div>
+    <a class="go ghost" href="ble_console.html">打开 ▸</a>
+  </div>
+
+  <div class="card">
+    <div>
+      <h2>⑧ 队友导航 App 最终页面（模拟） <span class="tag">看"效果"时用 · 也能给队友看</span></h2>
+      <p>把队友那个 iOS 导航 App 最后的样子<b>用网页照做了一份</b>：顶部大字「<b>电梯现在在几层</b>」、
+      右侧绿钮「<b>点 = 呼梯 / 按住向左拖 = 进全屏电梯页</b>」、底部一排模拟开关（你在 / 要去 / 甲梯 / 乙梯）。手机上打开也能用。<br>
+      它和安卓 App 里新加的那一页（<code>NavMockActivity</code>）是<b>同一套尺寸、同一套逻辑</b>，
+      已逐条核对：判方向、呼叫 → 回执 → 轿厢开过来、<b>全屏页不越界、两台轿厢各走各的</b>。<br>
+      全屏页里是<b>两台电梯</b>：<b>甲梯跟着你走</b>（你在哪层它就在哪层）、<b>到站自动开门</b>（停一会儿再关）；
+      <b>乙梯是纯装饰</b>，B~3F 随机慢慢跑（两台层显<b>一样大、各占一半、正好压在各自井道正上方</b>，
+      框里<b>只有大数字、底下不写小字</b>）。
+      真机上「电梯在哪层」用的是<b>自己的蓝牙判层</b>。<br>
+      <b>数据全是模拟的</b>（页面上都标了"模拟"），不连蓝牙；呼梯来自蓝牙（真机上）。</p>
+    </div>
+    <a class="go ghost" href="teammate_app_mock.html">打开 ▸</a>
+  </div>
+
+  <div class="card">
+    <div>
+      <h2>⑨ 远处看电梯在哪层（真数据 · 走 Wi-Fi） <span class="tag">⚠️ 摄像头这条路现已搁置 · 留作备用</span></h2>
+      <p>监控手机（架在电梯厅前、开着摄像头）读到几层，<b>这台设备离多远都能实时看见</b>：
+      填上监控手机的 <code>http://IP:8899</code> 点「连接」就连上。<b>没连上就显示 <code>--</code>，不瞎编</b>；
+      连上了会标明 <span style="color:#8fe3b4">真 · 摄像头</span> 还是 <span style="color:#e8b04b">蓝牙判层</span>。
+      页面里自带「怎么用（3 步）」，还有「没有监控手机就先摆一个（演练用）」。</p>
+    </div>
+    <a class="go ghost" href="monitor_live.html">打开 ▸</a>
+  </div>
+
+  <div class="sec">注意事项</div>
+  <div class="foot">
+    · 这些页面都是**纯前端**，不联网也能跑；但 <code>floor_display_reader.html</code> 的"摄像头实时"和任何
+      <code>getUserMedia</code> 都要求<b>安全上下文</b>：<code>localhost</code> 可以，<code>http://局域网IP</code> 会被浏览器拦掉
+      （用 <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code> 可以临时放行，仅用于提前试）。
+    · <code>ble_console.html</code>（⑦）用 <b>Web 蓝牙</b>，同样要求安全上下文，<b>而且双击本地文件常被浏览器直接拒绝</b> ——
+      请用 <code>http://localhost:8777/ble_console.html</code> 打开；页面顶部也会自己检测并把解决办法写出来。
+    · 演示当天只依赖 <b>①</b>：它不需要摄像头、不需要网络、不需要硬件。
+    · 要发给队友的资料包在仓库根目录（<code>发给队友/</code>、<code>发给队友_透视井道/</code>、<code>发给队友_到站检测/</code>），
+      这一页不负责那些。
+    · 已经打包好的（都在仓库根目录）：<code>烧录程序_v8.zip</code>（两块 ESP32 的最终固件）、
+      <code>安卓App_v12.zip</code>（手机 App，含 ⑧ 那一页的安卓版）、
+      <code>发给队友_v1.5.zip</code> / <code>发给队友_到站检测_v1.zip</code> / <code>发给队友_透视井道_v1.zip</code>（给队友的资料）、
+      <code>演示材料_v3.zip</code>（现场小抄）。
+  </div>
+
+</div>
+<script>
+/* 页数不写死：以后往 preview/ 里加新页面，这里自动跟着变。
+ * （以前把页数写成死数字，结果 title 里错了两轮："五个页面" → 实际 7 → 8。） */
+(function () {
+  var n = document.querySelectorAll('.card').length;
+  var el = document.getElementById('nPages');
+  if (el) el.textContent = n;
+  document.title = '演示台 · ' + n + ' 个页面，什么时候用哪个';
+})();
+</script>
+</body>
+</html>
