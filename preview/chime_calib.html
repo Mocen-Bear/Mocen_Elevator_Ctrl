@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>到站"叮"声 · 现场标定台（跑的是 chime_node.ino 的同一套 DSP）</title>
+<style>
+  :root{ --bg:#070D16; --panel:#0b1624; --line:#1b2b3f; --dim:#7f93a8; --fg:#dbe7f3;
+         --accent:#2ecbff; --ok:#7CE0A0; --warn:#ffcc66; --bad:#ff6b6b; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(circle at 50% -10%,#12233a 0%,#070D16 62%);
+       color:var(--fg);font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:18px 20px 46px}
+  h1{font-size:20px;margin:0 0 3px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line);background:#0b1624;color:var(--dim);margin-left:6px;font-weight:400}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:280px 1fr 330px;gap:14px;align-items:start}
+  @media (max-width:1080px){ .grid{grid-template-columns:1fr} }
+  .card{background:rgba(11,22,36,.72);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .card h3{margin:0 0 9px;font-size:12.5px;color:var(--dim);font-weight:500;letter-spacing:1px}
+  canvas{display:block;border-radius:8px;background:#05090f;width:100%}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  label{font-size:12.5px;color:var(--dim);display:flex;align-items:center;gap:6px;justify-content:space-between}
+  label input[type=range]{width:104px;accent-color:var(--accent)}
+  label input[type=number]{width:70px;background:#0b1624;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:2px 6px;font:inherit;font-size:12.5px}
+  .ctl{display:flex;flex-direction:column;gap:7px}
+  button{font:inherit;font-size:13px;padding:7px 13px;border-radius:9px;border:1px solid #263f59;background:#12263c;color:var(--fg);cursor:pointer}
+  button:hover{background:#17324e}
+  button.primary{background:linear-gradient(#1d5f8f,#134663);border-color:#2b7fb2}
+  button:disabled{opacity:.45;cursor:default}
+  .big{font-size:30px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)} .dim{color:var(--dim)}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:12.5px;margin-top:7px}
+  .kv b{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:7px}
+  th,td{border:1px solid var(--line);padding:4px 6px;text-align:left;font-variant-numeric:tabular-nums}
+  th{color:var(--dim);font-weight:500}
+  pre{background:#05090f;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px;
+      overflow:auto;margin:8px 0 0;white-space:pre;color:#cfe2f2}
+  .note{font-size:12.5px;color:var(--dim);margin-top:9px}
+  code{background:#0b1624;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12px}
+  .lamp{display:inline-block;width:13px;height:13px;border-radius:50%;background:#1b2b3f;border:1px solid #2b4c68;vertical-align:-2px}
+  .lamp.on{background:var(--ok);box-shadow:0 0 12px rgba(124,224,160,.8);border-color:var(--ok)}
+  .log{max-height:210px;overflow:auto;font-size:12.5px}
+  .log div{padding:3px 0;border-bottom:1px dashed #16273a}
+  .verdict{margin-top:9px;padding:9px 12px;border-radius:9px;border-left:3px solid var(--accent);background:rgba(46,203,255,.07);font-size:13px}
+</style>
+</head>
+<body>
+
+<h1>到站"叮"声 · 现场标定台 <span class="pill">跑的是 chime_node.ino 里同一套 DSP</span></h1>
+<div class="sub">
+  `chime_node.ino` 里那几个阈值（本底倍数 / 频率上下限 / 绝对下限）**必须到现场按大楼的提示音标一次**，
+  代码里放的只是保守初值。这一页把固件里的 <b>4 kHz 采样 → 40 ms 窗口 → RMS + 过零率</b> 原样搬到浏览器里，
+  用你的麦克风<b>边听边出数</b>，最后直接给你可以粘回固件的 <code>#define</code> 那几行。
+  <br><b>为什么不在固件里调？</b> 串口只能看数字，看不到"这一下到底像不像叮"。这里能同时看到波形强度、频率落在哪、以及判定灯什么时候亮。
+</div>
+
+<div class="grid">
+  <!-- ================= 左：参数 ================= -->
+  <div class="card">
+    <h3>① 阈值（和固件里同名）</h3>
+    <div class="ctl">
+      <label>RMS_ON_FLOOR_MULT <input type="range" id="p-mult" min="1.2" max="8" step="0.1" value="3"><b id="v-mult">3.0</b></label>
+      <label>RMS_ABS_MIN <input type="number" id="p-absMin" value="14" step="1"></label>
+      <label>FREQ_LO_HZ <input type="number" id="p-fLo" value="700" step="50"></label>
+      <label>FREQ_HI_HZ <input type="number" id="p-fHi" value="1900" step="100"></label>
+      <label>DINGS_TO_TRIGGER <input type="range" id="p-dings" min="1" max="5" step="1" value="2"><b id="v-dings">2</b></label>
+      <label>REFRACTORY_MS <input type="number" id="p-refr" value="3000" step="500"></label>
+    </div>
+    <h3 style="margin-top:14px">② 采集</h3>
+    <div class="row">
+      <button class="primary" id="b-mic">🎙 开启麦克风</button>
+      <button id="b-stop" disabled>停止</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="b-selftest">▶ 离线自测（不用麦克风）</button>
+    </div>
+    <div class="verdict" id="verdict">
+      先点<b>离线自测</b>：用合成信号（静音 / 1200 Hz 叮 / 300 Hz 说话声）验证这套判定逻辑本身是对的，再开麦克风去现场标。
+    </div>
+    <div class="note">
+      <b>注意：</b>页面对麦克风关掉了 <code>autoGainControl / noiseSuppression</code>，
+      但浏览器/系统的音量、以及麦克风的物理增益仍然会改变<b>RMS 的绝对值</b>。
+      所以真正稳的是<b>比值（RMS ÷ 本底）</b>和<b>频率</b>，这两样才写回固件。
+    </div>
+  </div>
+
+  <!-- ================= 中：实时 ================= -->
+  <div class="card">
+    <h3>实时（40 ms 一个窗口，和固件同节奏）</h3>
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div class="dim" style="font-size:12px">判定灯（= 固件里 LED 那一亮）</div>
+        <div style="margin-top:2px"><span class="lamp" id="lamp"></span> <b id="lampTxt" class="dim">待机</b></div>
+      </div>
+      <div style="text-align:right">
+        <div class="dim" style="font-size:12px">已判定到站次数</div>
+        <div class="big ok" id="count">0</div>
+      </div>
+    </div>
+    <canvas id="meter" height="78" style="margin-top:10px"></canvas>
+    <canvas id="spec" height="180" style="margin-top:8px"></canvas>
+    <div class="kv" style="margin-top:10px">
+      <span class="dim">本底噪声 RMS（算法自跟踪）</span><b id="k-floor">12</b>
+      <span class="dim">本窗 RMS</span><b id="k-rms">0</b>
+      <span class="dim">触发线 = 本底 × MULT（与 ABS_MIN 取大）</span><b id="k-thr">—</b>
+      <span class="dim">本窗主频（过零率估）</span><b id="k-freq">0 Hz</b>
+      <span class="dim">频带内？</span><b id="k-tone">—</b>
+      <span class="dim">连续命中窗口</span><b id="k-hit">0</b>
+    </div>
+    <div class="note">
+      灰带 = 固件认的"叮"频带（<code>FREQ_LO_HZ ~ FREQ_HI_HZ</code>）；
+      竖虚线 = 最近一次判定的主频。<b>过零率估频在纯音上很准，在有和声/噪声时会偏高</b>，所以它是"够用"而不是"精确"。
+      <br><b>关键：</b>页面把麦克风也抽成 <b>4 kHz</b>（和固件一样，<b>不做抗混叠</b>），
+      所以下面那个"本窗主频"就是<b>固件会看到的那个值（可能已经混叠）</b>，可以放心直接抄回固件；
+      而上面这张频谱是真实的 48 kHz 视图，<b>2 kHz 以上固件根本看不到</b>（红区）。
+    </div>
+  </div>
+
+  <!-- ================= 右：结果 ================= -->
+  <div class="card">
+    <h3>③ 采到的"叮"</h3>
+    <div class="log" id="log"><span class="dim" style="font-size:12.5px">还没有。</span></div>
+    <h3 style="margin-top:12px">④ 建议写回固件</h3>
+    <div id="suggest" class="note">采到 1 次以上就会给建议。</div>
+    <pre id="define">#define RMS_ON_FLOOR_MULT 3.0f
+#define RMS_ABS_MIN      14.0f
+#define FREQ_LO_HZ      700
+#define FREQ_HI_HZ     1900
+#define DINGS_TO_TRIGGER   2
+#define REFRACTORY_MS   3000</pre>
+    <div class="row" style="margin-top:8px">
+      <button id="b-copy">复制这几行</button>
+      <button id="b-clear">清空</button>
+    </div>
+    <div class="note">
+      <b>怎么用建议值：</b>在井道边、电梯门开着的时候采集 —— 让电梯"叮"几下（按一下呼梯、等它到站），
+      每一次都会进上面的表。建议值取的是"<b>最弱的那次叮，还能稳稳超过门槛</b>"，同时保证安静时的环境音不越线。
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   0) 参数（默认值 = chime_node.ino 里的保守初值）
+   ===================================================================== */
+const DEF = { mult:3.0, absMin:14.0, fLo:700, fHi:1900, dings:2, refr:3000 };
+const P = Object.assign({}, DEF);
+const DSP = { FS:4000, WIN:160, DC_EMA:0.0015, FLOOR_EMA:0.08, FLOOR_MIN:2.0, FLOOR_INIT:12.0 };
+
+/* =====================================================================
+   1) DSP —— 和 chime_node.ino 的 micProcess() 逐行对应
+      push(adcValue, nowMs) 每进一个样本；满一个窗口返回窗口结果，否则 null
+   ===================================================================== */
+function makeDsp(){
+  const st = { dc:2048, sumSq:0, zc:0, prev:0, n:0, floor:DSP.FLOOR_INIT,
+               hit:0, lastDing:-1e9, rms:0, freq:0, count:0, events:[] };
+  function push(adc, nowMs){
+    st.dc += (adc - st.dc) * DSP.DC_EMA;
+    const x = adc - st.dc;
+    st.sumSq += x*x;
+    if (st.prev < 0 && x >= 0) st.zc++;
+    if (st.prev >= 0 && x < 0) st.zc++;            // ★ 上下沿都数（固件 2026-10-17 修过这里）
+    st.prev = x;
+    if (++st.n < DSP.WIN) return null;
+
+    const rms  = Math.sqrt(st.sumSq / DSP.WIN);
+    const sec  = DSP.WIN / DSP.FS;                    // 0.04 s
+    const freq = st.zc / (2 * sec);                   // 过零率/2 ≈ 主频
+    st.rms = rms; st.freq = freq;
+
+    const loud = (rms > st.floor * P.mult) && (rms > P.absMin);
+    const tone = (freq >= P.fLo && freq <= P.fHi);
+
+    let fired = null;
+    if (loud && tone) st.hit++;
+    else {
+      st.hit = 0;
+      if (!loud) st.floor += (rms - st.floor) * DSP.FLOOR_EMA;
+      if (st.floor < DSP.FLOOR_MIN) st.floor = DSP.FLOOR_MIN;
+    }
+    if (st.hit >= P.dings && (nowMs - st.lastDing) > P.refr) {
+      st.lastDing = nowMs; st.hit = 0; st.count++;
+      fired = { t:nowMs, rms, freq, floor:st.floor };
+      st.events.push(fired);
+    }
+    const win = { rms, freq, floor:st.floor, loud, tone, hit:st.hit, fired, thr:Math.max(st.floor*P.mult, P.absMin) };
+
+    st.n = 0; st.sumSq = 0; st.zc = 0;
+    return win;
+  }
+  return { st, push };
+}
+
+/* =====================================================================
+   2) 离线自测：合成 4 kHz 样本流，喂进同一个 DSP
+   ===================================================================== */
+function synthStream(scenes){
+  /* scenes: [{dur, kind:'quiet'|'tone'|'voice'|'hiss', freq, amp}] → 返回 [{adc, t(ms)}] */
+  const out = [], dt = 1000/DSP.FS;
+  let t = 0, seed = 12345;
+  const rnd = () => { seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed/0x7fffffff - 0.5; };
+  for(const sc of scenes){
+    const n = Math.round(sc.dur*DSP.FS);
+    for(let i=0;i<n;i++, t+=dt){
+      let s = 0;
+      if(sc.kind==='tone'){
+        const env = Math.min(1, i/(0.006*DSP.FS)) * Math.min(1, (n-i)/(0.012*DSP.FS)); // 快起快落
+        s = Math.sin(2*Math.PI*sc.freq*t/1000) * (sc.amp||900) * env;
+      } else if(sc.kind==='voice'){
+        // 说话声：基频 180 Hz + 一堆谐波 → 波形乱，过零率远高于基频
+        for(let h=1;h<=9;h++) s += Math.sin(2*Math.PI*180*h*t/1000)/h;
+        s /= 2.2; s *= (sc.amp||300) * (0.7 + 0.3*Math.sin(2*Math.PI*4*t/1000));
+      } else if(sc.kind==='hiss'){
+        s = rnd()*2 * (sc.amp||600);
+      } else {
+        s = rnd()*2 * (sc.amp||6);
+      }
+      out.push({ adc: 2048 + s, t });
+    }
+  }
+  return out;
+}
+function runScenes(scenes){
+  const d = makeDsp();
+  for(const s of synthStream(scenes)) d.push(s.adc, s.t);
+  return d.st;
+}
+window.__selfTest = function(){
+  const quiet = runScenes([{dur:3, kind:'quiet'}]);
+  const ding  = runScenes([{dur:3, kind:'quiet'}, {dur:0.20, kind:'tone', freq:1200, amp:900}, {dur:1.2, kind:'quiet'}]);
+  const voice = runScenes([{dur:2, kind:'quiet'}, {dur:0.60, kind:'voice', amp:320}, {dur:1.0, kind:'quiet'}]);
+  const hiss  = runScenes([{dur:2, kind:'quiet'}, {dur:0.25, kind:'hiss', amp:600}, {dur:1.0, kind:'quiet'}]);
+  const low   = runScenes([{dur:2, kind:'quiet'}, {dur:0.20, kind:'tone', freq:400, amp:900}, {dur:1.0, kind:'quiet'}]);
+  const ev = st => st.events.map(e=>({rms:Math.round(e.rms), hz:Math.round(e.freq), floor:Math.round(e.floor)}));
+  return {
+    '静音3秒':    {dings:quiet.count},
+    '叮1200Hz':   {dings:ding.count, 事件:ev(ding)},
+    '说话声300':  {dings:voice.count, 事件:ev(voice)},
+    '宽带噪声':   {dings:hiss.count, 事件:ev(hiss)},
+    '低频400Hz':  {dings:low.count},
+    '本底最终':   {quiet:+quiet.floor.toFixed(1), ding:+ding.floor.toFixed(1)},
+  };
+};
+/* 更细:单个场景 */
+window.__runScene = (scenes) => runScenes(scenes);
+
+/* =====================================================================
+   3) 中频/面板绘制
+   ===================================================================== */
+const meterCv=document.getElementById('meter'), mx=meterCv.getContext('2d');
+const specCv=document.getElementById('spec'), sx=specCv.getContext('2d');
+let lastWin = null, lastEventHz = null, analyser = null, ac = null, scriptNode = null, micStream = null;
+
+function drawMeter(){
+  const W=meterCv.width, H=meterCv.height;
+  mx.clearRect(0,0,W,H); mx.fillStyle='#05090f'; mx.fillRect(0,0,W,H);
+  const MAX=1000, y0=H-14, hgt=H-30;
+  const xOf = v => 6 + Math.min(1, Math.log10(1+v)/Math.log10(1+MAX)) * (W-14);
+  // 轴
+  mx.strokeStyle='#16273a'; mx.lineWidth=1;
+  for(const v of [2,5,10,20,50,100,200,500,1000]){
+    const x=xOf(v); mx.beginPath(); mx.moveTo(x,y0-hgt-4); mx.lineTo(x,y0+4); mx.stroke();
+    mx.fillStyle='#4d637a'; mx.font='9px sans-serif'; mx.textAlign='center'; mx.fillText(v, x, H-3);
+  }
+  const rms = lastWin? lastWin.rms : 0, floor = lastWin? lastWin.floor : DSP.FLOOR_INIT;
+  const thr = Math.max(floor*P.mult, P.absMin);
+  // 本底
+  const xf=xOf(floor);
+  mx.strokeStyle='#2b4c68'; mx.beginPath(); mx.moveTo(xf,y0-hgt-4); mx.lineTo(xf,y0+4); mx.stroke();
+  mx.fillStyle='#7f93a8'; mx.textAlign='center'; mx.fillText('本底', xf, 11);
+  // 触发线
+  const xt=xOf(thr);
+  mx.strokeStyle='#ffcc66'; mx.beginPath(); mx.moveTo(xt,y0-hgt-4); mx.lineTo(xt,y0+4); mx.stroke();
+  mx.fillStyle='#ffcc66'; mx.fillText('触发线', xt, 11);
+  // RMS 填充
+  const xr=xOf(rms);
+  const g=mx.createLinearGradient(0,0,W,0); g.addColorStop(0,'#2ecbff'); g.addColorStop(.7,'#7CE0A0'); g.addColorStop(1,'#ffcc66');
+  mx.fillStyle = (rms>thr)? '#7CE0A0' : g;
+  mx.globalAlpha=.85; mx.fillRect(6, y0-hgt, Math.max(2,xr-6), hgt); mx.globalAlpha=1;
+  mx.fillStyle='#dbe7f3'; mx.font='600 11px sans-serif'; mx.textAlign='left';
+  mx.fillText('RMS '+rms.toFixed(0), 8, y0-hgt-2);
+  mx.textAlign='right'; mx.fillText('对数刻度', W-8, y0-hgt-2);
+}
+function drawSpec(){
+  const W=specCv.width, H=specCv.height;
+  sx.clearRect(0,0,W,H); sx.fillStyle='#05090f'; sx.fillRect(0,0,W,H);
+  const FMAX=4000, pad=22, NYQ=2000;
+  const xOfF = f => pad + (f/FMAX)*(W-pad-6);
+  // 频带高亮（固件认的带 = 混叠后落在 700~1900）
+  sx.fillStyle='rgba(46,203,255,.07)';
+  sx.fillRect(xOfF(P.fLo), 0, xOfF(P.fHi)-xOfF(P.fLo), H);
+  sx.strokeStyle='rgba(46,203,255,.35)'; sx.lineWidth=1;
+  sx.beginPath(); sx.moveTo(xOfF(P.fLo),0); sx.lineTo(xOfF(P.fLo),H); sx.stroke();
+  sx.beginPath(); sx.moveTo(xOfF(P.fHi),0); sx.lineTo(xOfF(P.fHi),H); sx.stroke();
+  // 奈奎斯特警戒区（2kHz 以上：固件"看不到"，只会看到镜像混叠）
+  sx.fillStyle='rgba(255,107,107,.05)'; sx.fillRect(xOfF(NYQ), 0, W-xOfF(NYQ), H);
+  sx.strokeStyle='rgba(255,107,107,.45)'; sx.setLineDash([3,3]);
+  sx.beginPath(); sx.moveTo(xOfF(NYQ),0); sx.lineTo(xOfF(NYQ),H); sx.stroke(); sx.setLineDash([]);
+  // 网格/刻度
+  sx.fillStyle='#4d637a'; sx.font='9px sans-serif'; sx.textAlign='left';
+  for(let f=0; f<=FMAX; f+=1000){ const x=xOfF(f);
+    sx.strokeStyle='rgba(30,48,68,.8)'; sx.beginPath(); sx.moveTo(x,14); sx.lineTo(x,H); sx.stroke();
+    sx.fillText((f/1000)+'k', x+2, H-4); }
+  sx.fillStyle='#5f7288'; sx.fillText('0', 4, H-4);
+  sx.textAlign='right'; sx.fillStyle='#4d637a';
+  sx.fillText('灰带 = 固件认的"叮"频带', W-8, 11);
+  sx.fillStyle='#ff8b8b'; sx.textAlign='left';
+  sx.fillText('2k 以上固件看不到（奈奎斯特）', xOfF(NYQ)+5, H-4);
+  // 频谱
+  if(analyser){
+    const N = analyser.frequencyBinCount, binHz = (ac.sampleRate/2)/N;
+    const buf = new Uint8Array(N); analyser.getByteFrequencyData(buf);
+    sx.beginPath();
+    let started=false;
+    for(let i=0;i<N;i++){
+      const f=i*binHz; if(f>FMAX) break;
+      const x=xOfF(f), y=H-16 - (buf[i]/255)*(H-30);
+      if(!started){ sx.moveTo(x,y); started=true; } else sx.lineTo(x,y);
+    }
+    sx.strokeStyle='#2ecbff'; sx.lineWidth=1.4; sx.stroke();
+  } else {
+    sx.fillStyle='#3d556b'; sx.font='12px sans-serif'; sx.textAlign='center';
+    sx.fillText('（没开麦克风时这里是空的 —— 但下面的数值仍然来自最近一个窗口）', W/2, H/2);
+  }
+  // 最近事件主频
+  if(lastEventHz!==null){
+    const x=xOfF(Math.min(FMAX,lastEventHz));
+    sx.strokeStyle='#7CE0A0'; sx.setLineDash([4,4]); sx.beginPath(); sx.moveTo(x,0); sx.lineTo(x,H); sx.stroke(); sx.setLineDash([]);
+    sx.fillStyle='#7CE0A0'; sx.textAlign='center'; sx.font='600 10px sans-serif';
+    sx.fillText(Math.round(lastEventHz)+'Hz', x, 22);
+  }
+}
+
+/* =====================================================================
+   4) 面板文字
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+function paint(win){
+  if(win) lastWin = win;
+  const w = lastWin;
+  if(w){
+    $('#k-floor').textContent = w.floor.toFixed(1);
+    $('#k-rms').textContent   = w.rms.toFixed(0);
+    $('#k-thr').textContent   = w.thr.toFixed(0);
+    $('#k-freq').textContent  = Math.round(w.freq)+' Hz';
+    $('#k-tone').innerHTML    = w.tone? '<span class="ok">在带内</span>' : '<span class="dim">不在</span>';
+    $('#k-hit').textContent   = w.hit;
+    if(w.fired){
+      lastEventHz = w.fired.freq;
+      $('#lamp').classList.add('on'); $('#lampTxt').textContent='叮！'; $('#lampTxt').className='ok';
+      setTimeout(()=>{ $('#lamp').classList.remove('on'); $('#lampTxt').textContent='待机'; $('#lampTxt').className='dim'; }, 700);
+    }
+  }
+}
+let firedCount = 0;
+function logEvent(e, src){
+  const box = $('#log');
+  if(firedCount===1) box.innerHTML='';
+  const d=document.createElement('div');
+  d.innerHTML = `<b class="ok">叮 #${firedCount}</b> &nbsp; RMS=<b>${Math.round(e.rms)}</b> &nbsp; 主频=<b>${Math.round(e.freq)} Hz</b> &nbsp; 当时本底=<b>${e.floor.toFixed(0)}</b> &nbsp; <span class="dim">${src}</span>`;
+  box.prepend(d);
+  $('#count').textContent = firedCount;
+  lastEventHz = e.freq;
+  suggest();
+}
+function suggest(){
+  if(!events.length){ $('#suggest').textContent='采到 1 次以上就会给建议。'; return; }
+  const hz = events.map(e=>e.freq), rms = events.map(e=>e.rms), fl = events.map(e=>e.floor);
+  const hzLo = Math.min(...hz), hzHi = Math.max(...hz);
+  const rmsMin = Math.min(...rms), flMax = Math.max(...fl);
+  // 频率带:包住实测的"叮",各留 25%~35% 余量,再对齐到 50/100 的整数
+  const fLo = Math.max(120, Math.round((hzLo*0.75)/50)*50);
+  const fHi = Math.min(1900, Math.round((hzHi*1.35)/100)*100);   // 上限就是奈奎斯特 2k
+  // 倍数:最弱的一次叮要能过线 → mult < rmsMin/本底; 取一半留余量,夹到 [2,6]
+  let mult = (rmsMin / Math.max(flMax, DSP.FLOOR_MIN)) / 2;
+  mult = Math.min(6, Math.max(2, mult));
+  // 绝对下限:比安静时的本底高一点,避免极静环境下风吹草动
+  const absMin = Math.max(8, Math.round(flMax*1.5));
+  $('#suggest').innerHTML =
+    `采到 <b>${events.length}</b> 次：主频 <b>${Math.round(hzLo)}~${Math.round(hzHi)} Hz</b>，`+
+    `RMS <b>${Math.round(rmsMin)}~${Math.round(Math.max(...rms))}</b>，当时的本底最高 <b>${Math.round(flMax)}</b>。<br>`+
+    `→ 频带取实测的 ±25/35%：<b>${fLo} ~ ${fHi} Hz</b>；倍数取"最弱那次的一半信噪比"：<b>${mult.toFixed(1)}</b>；`+
+    `绝对下限取本底的 1.5 倍：<b>${absMin}</b>。`;
+  $('#define').textContent =
+`#define RMS_ON_FLOOR_MULT ${mult.toFixed(1)}f
+#define RMS_ABS_MIN      ${absMin}.0f
+#define FREQ_LO_HZ      ${fLo}
+#define FREQ_HI_HZ     ${fHi}
+#define DINGS_TO_TRIGGER   ${P.dings}
+#define REFRACTORY_MS   ${P.refr}`;
+}
+const events = [];
+
+/* =====================================================================
+   5) 参数绑定
+   ===================================================================== */
+function bindNum(sel, key, isFloat){
+  const el=$(sel);
+  const apply=()=>{ P[key] = isFloat? parseFloat(el.value) : parseInt(el.value,10); if(key==='mult') $('#v-mult').textContent = P.mult.toFixed(1); };
+  el.addEventListener('input', apply); apply();
+}
+bindNum('#p-mult','mult',true);
+bindNum('#p-absMin','absMin',false);
+bindNum('#p-fLo','fLo',false);
+bindNum('#p-fHi','fHi',false);
+bindNum('#p-dings','dings',false);
+bindNum('#p-refr','refr',false);
+$('#p-dings').addEventListener('input',()=>{ $('#v-dings').textContent = P.dings; });
+
+/* =====================================================================
+   6) 离线自测（合成信号 → 同一个 DSP）
+   ===================================================================== */
+const SC = {
+  quiet : [{dur:3, kind:'quiet'}],
+  ding  : [{dur:3, kind:'quiet'}, {dur:0.20, kind:'tone', freq:1200, amp:900}, {dur:1.2, kind:'quiet'}],
+  voice : [{dur:2, kind:'quiet'}, {dur:0.60, kind:'voice', amp:320}, {dur:1.0, kind:'quiet'}],
+  hiss  : [{dur:2, kind:'quiet'}, {dur:0.25, kind:'hiss', amp:600}, {dur:1.0, kind:'quiet'}],
+  low   : [{dur:2, kind:'quiet'}, {dur:0.20, kind:'tone', freq:400, amp:900}, {dur:1.0, kind:'quiet'}],
+};
+$('#b-selftest').onclick=()=>{
+  const q = runScenes(SC.quiet), v = runScenes(SC.voice), h = runScenes(SC.hiss), l = runScenes(SC.low);
+  // "叮"这一段走页面自己的 dsp（这样表/记录/建议都能填上）
+  dsp = makeDsp(); firedCount = 0; events.length = 0; lastEventHz = null;
+  let dingN = 0;
+  for(const s of synthStream(SC.ding)){
+    const w = dsp.push(s.adc, s.t);
+    if(w){ lastWin = w; if(w.fired){ dingN++; firedCount++; events.push({rms:w.fired.rms, freq:w.fired.freq, floor:w.fired.floor}); logEvent(w.fired,'离线自测'); } }
+  }
+  const dingHz = dingN? Math.round(events[events.length-1].freq) : 0;
+  const mark = (cnt, wantZero) => cnt===0
+      ? (wantZero? '<b class="ok">0</b> ✓' : '<b class="ok">0</b>')
+      : (wantZero? `<b class="bad">${cnt}</b> ⚠` : `<b class="ok">${cnt}</b> ✓`);
+  $('#verdict').innerHTML =
+    `<b>离线自测结果（合成信号，跑的是和实时完全相同的 DSP）：</b><br>`+
+    `· 静音 3 s → 触发 ${mark(q.count,true)} 次（不该响）<br>`+
+    `· 1200 Hz 短音（像"叮"）→ 触发 ${mark(dingN,false)} 次，报出主频 <b>${dingHz} Hz</b>（应该响，且频率要接近 1200）<br>`+
+    `· 300 Hz 说话声 → 触发 ${mark(v.count,true)} 次 ${v.count? '<b class="warn">这一类最容易误报</b> —— 按固件注释把 <code>FREQ_LO_HZ</code> 提到 900~1200，或调大倍数':'（过零率估频把它挡在带外了）'}<br>`+
+    `· 400 Hz 强音 → 触发 ${mark(l.count,true)} 次（被频率下限挡住，不该响）<br>`+
+    `· 宽带噪声 → 触发 <b class="warn">${h.count}</b> 次 —— <b>已知边界</b>：粉噪声/金属撞击的过零率也落在带内，只能靠现场采到的"叮"再收紧频带<br>`+
+    `<b>结论：</b>"该响的响、低频不该响的不响"这条逻辑本身是对的；剩下的（频带上下限、倍数）必须用现场真实的"叮"来定 —— 开麦克风采几次，看右下角。`;
+  paint(lastWin); drawMeter(); drawSpec(); suggest();
+};
+
+/* =====================================================================
+   7) 麦克风
+   ===================================================================== */
+let dsp = makeDsp();
+$('#b-mic').onclick=async ()=>{
+  try{
+    $('#b-mic').disabled = true;
+    micStream = await navigator.mediaDevices.getUserMedia({ audio:{
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false } });
+    ac = new (window.AudioContext||window.webkitAudioContext)();
+    const src = ac.createMediaStreamSource(micStream);
+    analyser = ac.createAnalyser(); analyser.fftSize = 4096; analyser.smoothingTimeConstant = 0.6;
+    src.connect(analyser);
+    const mute = ac.createGain(); mute.gain.value = 0;
+    scriptNode = ac.createScriptProcessor(1024, 1, 1);
+    src.connect(scriptNode); scriptNode.connect(mute); mute.connect(ac.destination);
+    const dec = Math.max(1, Math.round(ac.sampleRate / DSP.FS));   // 48k → 4k
+    dsp = makeDsp(); firedCount = 0; events.length = 0; lastEventHz = null;
+    $('#log').innerHTML='<span class="dim" style="font-size:12.5px">正在听…接近电梯门口，等它"叮"。</span>';
+    scriptNode.onaudioprocess = (ev)=>{
+      const ch = ev.inputBuffer.getChannelData(0);
+      const now = (ac.currentTime - t0)*1000;
+      for(let i=0;i<ch.length;i+=dec){
+        const adc = 2048 + ch[i]*2048;
+        const w = dsp.push(adc, now);
+        if(w){ lastWin = w; if(w.fired){ firedCount++; events.push({rms:w.fired.rms, freq:w.fired.freq, floor:w.fired.floor}); logEvent(w.fired,'麦克风'); } }
+      }
+    };
+    t0 = ac.currentTime;
+    $('#b-stop').disabled = false;
+    $('#verdict').innerHTML = `<b>麦克风已开。</b>采样率 ${ac.sampleRate} Hz → 抽成 ${DSP.FS} Hz（和固件一样）。`+
+      `现在安静看几秒，读一下"本底"稳定在多少；然后让电梯"叮"一下，看判定灯和上面的表。`;
+  }catch(e){
+    $('#b-mic').disabled = false;
+    $('#verdict').innerHTML = `<b class="bad">开不了麦克风：</b>${String(e && e.message || e)}<br>`+
+      `常见原因：<b>不是安全上下文</b>（用 <code>https</code> / <code>localhost</code>，或者直接双击本地文件打开）、权限被拒、或没有麦克风设备。`+
+      `没有麦克风也不影响用"离线自测"验证逻辑。`;
+  }
+};
+let t0 = 0;
+$('#b-stop').onclick=()=>{
+  try{ if(scriptNode) scriptNode.disconnect(); if(analyser) analyser.disconnect(); if(micStream) micStream.getTracks().forEach(t=>t.stop()); if(ac) ac.close(); }catch(e){}
+  scriptNode=null; analyser=null; micStream=null; ac=null;
+  $('#b-mic').disabled=false; $('#b-stop').disabled=true;
+  $('#lampTxt').textContent='已停止'; $('#lampTxt').className='dim';
+};
+$('#b-copy').onclick=()=>{
+  const txt = $('#define').textContent;
+  (navigator.clipboard? navigator.clipboard.writeText(txt) : Promise.reject())
+    .then(()=> $('#b-copy').textContent = '已复制 ✓')
+    .catch(()=> { const r=document.createRange(); r.selectNodeContents($('#define'));
+                  const s=getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand('copy');
+                  $('#b-copy').textContent='已选中，按 Ctrl+C'; });
+  setTimeout(()=> $('#b-copy').textContent='复制这几行', 1800);
+};
+$('#b-clear').onclick=()=>{
+  firedCount=0; events.length=0; lastEventHz=null; dsp=makeDsp(); lastWin=null;
+  $('#log').innerHTML='<span class="dim" style="font-size:12.5px">还没有。</span>';
+  $('#count').textContent='0'; $('#suggest').textContent='采到 1 次以上就会给建议。';
+  paint({rms:0,freq:0,floor:DSP.FLOOR_INIT,thr:Math.max(DSP.FLOOR_INIT*P.mult,P.absMin),tone:false,hit:0});
+  drawMeter(); drawSpec();
+};
+
+/* =====================================================================
+   8) 主循环（只画面）
+   ===================================================================== */
+function fitAll(){
+  for(const cv of [meterCv, specCv]){ const r=cv.getBoundingClientRect(); const dpr=Math.min(2,window.devicePixelRatio||1);
+    cv.width = Math.max(200, Math.round(r.width*dpr)); cv.height = Math.round(parseInt(cv.getAttribute('height'),10)*dpr); }
+}
+window.addEventListener('resize', ()=>{ fitAll(); drawMeter(); drawSpec(); });
+fitAll();
+setInterval(()=>{ drawMeter(); drawSpec(); }, 90);
+
+/* 自测入口 */
+window.__dsp = { makeDsp, P, DSP, runScenes, get lastWin(){return lastWin;}, get events(){return events;} };
+</script>
+</body>
+</html>

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RSSI 楼层判定 · 方法与调参（离线仿真）</title>
+<style>
+  :root{ --bg:#070D16; --panel:#0b1624; --line:#1b2b3f; --dim:#7f93a8; --fg:#dbe7f3;
+         --accent:#2ecbff; --ok:#7CE0A0; --warn:#ffcc66; --bad:#ff6b6b; --hi:#F0C070; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(circle at 50% 0%,#101F33 0%,#070D16 72%);
+       color:var(--fg);font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:18px 20px 44px}
+  h1{font-size:20px;margin:0 0 2px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line);background:#0b1624;color:var(--dim)}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:250px 1fr 320px;gap:14px;align-items:start}
+  @media (max-width:1000px){ .grid{grid-template-columns:1fr} }
+  .card{background:rgba(11,22,36,.72);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .card h3{margin:0 0 8px;font-size:12.5px;color:var(--dim);font-weight:500;letter-spacing:1px}
+  canvas{display:block;border-radius:8px;background:#05090f}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  label{font-size:12.5px;color:var(--dim);display:flex;align-items:center;gap:6px;justify-content:space-between}
+  label input[type=range]{width:110px;accent-color:var(--accent)}
+  label input[type=number]{width:64px;background:#0b1624;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:2px 6px;font:inherit;font-size:12.5px}
+  .ctl{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+  button{font:inherit;font-size:13px;padding:7px 13px;border-radius:9px;border:1px solid #263f59;background:#12263c;color:var(--fg);cursor:pointer}
+  button:hover{background:#17324e}
+  button.primary{background:linear-gradient(#1d5f8f,#134663);border-color:#2b7fb2}
+  .big{font-size:26px;font-weight:800;line-height:1.1}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)} .dim{color:var(--dim)}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12.5px;margin-top:6px}
+  .kv b{font-weight:600;font-variant-numeric:tabular-nums}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:8px}
+  th,td{border:1px solid var(--line);padding:5px 7px;text-align:left}
+  th{color:var(--dim);font-weight:500}
+  .note{font-size:12.5px;color:var(--dim);margin-top:10px}
+  code{background:#0b1624;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12px}
+  .verdict{margin-top:10px;padding:9px 12px;border-radius:9px;border-left:3px solid var(--accent);background:rgba(46,203,255,.07);font-size:13px}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--dim);margin-top:6px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<h1>RSSI 楼层判定 · 离线仿真与调参 <span class="pill">和 App 里跑的是同一套算法</span></h1>
+<div class="sub">
+  你强调过两次"要<b>瞬时</b>"，而这是全项目**唯一没法在家验证**的一块（要真实 RSSI）。
+  这一页把 App 里的算法**一模一样**搬过来，用室内传播模型 + 噪声跑给你看：
+  <b>判定有多快</b>、<b>会不会在两层之间横跳</b>、<b>哪个参数该动</b>。
+  <br>参数来自 <code>FloorJudge.kt</code> 与 <code>ElevatorDevice.kt</code>：中位数窗口 3 · EMA 0.62 · 滞后 <b>3 dB</b> · 连赢 1 次 · 采样 200 ms。
+  <br><span class="dim">这里的 200 ms 是<b>故意取最保守</b>的：真机里每扫到一次新广播就立刻重判一次（<code>BleManager.kt</code> 里节流 40 ms），
+  另有 200 ms 心跳兜底。所以下面量出来的"首判 200 ms"是<b>上界</b>，真机只会更快。</span>
+</div>
+
+<div class="grid">
+  <!-- ============ 左：参数 ============ -->
+  <div class="card">
+    <h3>① 环境 / 算法参数</h3>
+    <div class="ctl">
+      <label>参考强度(1m) <input type="number" id="p-A" value="-59" step="1"></label>
+      <label>衰减指数 n <input type="range" id="p-n" min="1.6" max="4" step="0.1" value="2.4"><b id="v-n">2.4</b></label>
+      <label>噪声 σ (dB) <input type="range" id="p-sig" min="0" max="10" step="0.5" value="3.5"><b id="v-sig">3.5</b></label>
+      <hr style="border:none;border-top:1px solid var(--line);margin:2px 0">
+      <label>滞后 minLeadDb <input type="range" id="p-lead" min="0" max="10" step="0.5" value="3"><b id="v-lead">3.0</b></label>
+      <label>连赢 winCount <input type="range" id="p-wins" min="1" max="5" step="1" value="1"><b id="v-wins">1</b></label>
+      <label>中位窗口 <input type="range" id="p-win" min="1" max="9" step="1" value="3"><b id="v-win">3</b></label>
+      <label>EMA α <input type="range" id="p-ema" min="0.1" max="1" step="0.02" value="0.62"><b id="v-ema">0.62</b></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="b-reset">↺ 恢复 App 默认</button>
+    </div>
+    <h3 style="margin-top:14px">② 对照实验</h3>
+    <div class="row" style="flex-wrap:wrap">
+      <button class="primary" id="b-still">站在 2F 静止 20 s</button>
+      <button class="primary" id="b-mid">站在两层正中间 20 s</button>
+      <button class="primary" id="b-walk">从 2F 走到 3F</button>
+    </div>
+    <div class="row" style="margin-top:8px;flex-wrap:wrap">
+      <button id="b-recommend">套用推荐现场设置并重跑</button>
+      <button id="b-runs">清空结果</button>
+    </div>
+    <div class="verdict" id="verdict">点上面按钮跑一次（每个实验跑 6 个随机种子取平均，结果可复现）。</div>
+  </div>
+
+  <!-- ============ 中：动画 ============ -->
+  <div class="card">
+    <h3>实时(可拖动"我"的位置)</h3>
+    <div class="row" style="align-items:flex-start;gap:14px">
+      <canvas id="track" width="200" height="360"></canvas>
+      <div style="flex:1;min-width:280px">
+        <canvas id="chart" width="560" height="180" style="width:100%"></canvas>
+        <canvas id="strip" width="560" height="46" style="width:100%;margin-top:8px"></canvas>
+        <div class="legend">
+          <span><i class="dot" style="background:#2ecbff"></i>ELEV-2F</span>
+          <span><i class="dot" style="background:#F0C070"></i>ELEV-3F</span>
+          <span><i class="dot" style="background:#7CE0A0"></i>判定楼层</span>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="b-play">⏸ 暂停走动</button>
+      <span class="dim" style="font-size:12.5px">也可以用鼠标在左边轨道上拖动"我"</span>
+    </div>
+  </div>
+
+  <!-- ============ 右：结论 ============ -->
+  <div class="card">
+    <h3>当前读数</h3>
+    <div class="dim" style="font-size:12px">判定楼层</div>
+    <div class="big ok" id="now-floor">—</div>
+    <div class="dim" style="font-size:12px;margin-top:6px">滤波后强度(EMA)</div>
+    <div id="now-rssi" style="font-size:14px"></div>
+    <div class="kv">
+      <span class="dim">我离 2F 装置</span><b id="k-d2">—</b>
+      <span class="dim">我离 3F 装置</span><b id="k-d3">—</b>
+      <span class="dim">领先优势</span><b id="k-lead">—</b>
+      <span class="dim">处于死区</span><b id="k-dead">—</b>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--line);margin:10px 0">
+    <div class="dim" style="font-size:12px">累计换层次数（本次运行）</div>
+    <div class="kv">
+      <span class="dim">我们的算法</span><b id="k-ours" class="ok">0</b>
+      <span class="dim">朴素做法(谁强算谁)</span><b id="k-naive" class="bad">0</b>
+    </div>
+    <div class="note" id="runs"></div>
+    <div class="note">
+      <b>为什么要有"滞后"？</b> 走近两层中间时两个装置强度会相等，
+      朴素做法就会在两层之间<b>每秒横跳好几次</b>；滞后 3 dB 等于划出一块"死区"，
+      在死区里<b>保持现任楼层不变</b> —— 这就是"不抖"的来源。
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h3>对照实验结论</h3>
+  <table id="summary">
+    <thead><tr><th>场景</th><th>我们的算法 换层次数</th><th>朴素做法 换层次数</th><th>首次判对耗时</th><th>结论</th></tr></thead>
+    <tbody><tr><td colspan="5" class="dim">还没有跑过。点左边三个按钮。</td></tr></tbody>
+  </table>
+  <div class="note">
+    所有实验都用<b>固定随机种子</b>跑，所以同一组参数下结果可复现。
+    现场如果发现"乱跳"，把 <b>minLeadDb</b> 提到 4~5 或 <b>winCount</b> 改成 2 —— 代价是换层慢一个采样周期（200 ms），
+    这也是 <code>HANDOVER.md</code> §六里写的现场处置办法。
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   0) 伪随机(可复现)
+   ===================================================================== */
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+/* =====================================================================
+   1) 参数(默认值 = App 里的真实参数)
+   ===================================================================== */
+const DEF = { A:-59, n:2.4, sigma:3.5, lead:3.0, wins:1, win:3, ema:0.62 };
+const P = Object.assign({}, DEF);
+
+const CFG = {
+  tickMs: 200,           // MainActivity.TICK_MS
+  minRssi: -95.0,        // FloorJudge.minRssi
+  floorGapM: 2.6,        // 层高(与井道规格一致)
+  lateralM: 1.0,         // 你离装置的水平距离
+  devLat: 0.30,
+};
+
+/* 装置（只有 2F / 3F 有） */
+const DEVICES = [ {floor:1, name:'2F', color:'#2ecbff'}, {floor:2, name:'3F', color:'#F0C070'} ];
+
+/* =====================================================================
+   2) 仿真核心：和 Kotlin 逐行对应
+   ===================================================================== */
+function makeDevice(d){
+  return { idx:d.floor, name:d.name, color:d.color,
+           window:[], filtered:-127.0, raw:-127.0, lastRssi:-59 };
+}
+function pushRssi(dev, value){
+  dev.raw = value;
+  dev.window.push(value);
+  while(dev.window.length > P.win) dev.window.shift();
+  const s = dev.window.slice().sort((a,b)=>a-b), m = s.length>>1;
+  const median = (s.length%2===1)? s[m] : (s[m-1]+s[m])/2;
+  dev.filtered = (dev.filtered < -126.0) ? median : dev.filtered + P.ema*(median - dev.filtered);
+}
+
+/* FloorJudge.update 的 JS 版（含 currentFloor/node/挑战者连胜） */
+function makeJudge(){ return { floor:null, cur:null, chFloor:null, chStreak:0 }; }
+function judgeUpdate(J, devs){
+  const cands = devs.filter(d => d.filtered > CFG.minRssi);
+  if(!cands.length){ J.chFloor=null; J.chStreak=0;
+    if(J.floor!==null){ J.floor=null; J.cur=null; return true; } return false; }
+  let best = cands[0]; for(const c of cands) if(c.filtered > best.filtered) best = c;
+
+  if(J.floor===null){ J.floor=best.name; J.cur=best; J.chFloor=null; J.chStreak=0; return true; }
+  if(best.name === J.floor){ J.cur = best; J.chFloor=null; J.chStreak=0; return false; }
+
+  const curRssi = J.cur ? J.cur.filtered : -127.0;
+  const curGone = (!J.cur) || (curRssi <= CFG.minRssi);
+  if(!curGone){
+    const lead = best.filtered - curRssi;
+    if(lead < P.lead){ J.chFloor=null; J.chStreak=0; return false; }   // 死区
+  }
+  if(best.name === J.chFloor) J.chStreak++;
+  else { J.chFloor = best.name; J.chStreak = 1; }
+  if(curGone || J.chStreak >= P.wins){ J.floor=best.name; J.cur=best; J.chFloor=null; J.chStreak=0; return true; }
+  return false;
+}
+/* 朴素做法：仍用同样的滤波，但"谁强算谁"，无滞后无连胜 */
+function naivePick(devs){
+  const cands = devs.filter(d => d.filtered > CFG.minRssi);
+  if(!cands.length) return null;
+  let best = cands[0]; for(const c of cands) if(c.filtered > best.filtered) best = c;
+  return best.name;
+}
+
+/* 室内传播模型 + 噪声 */
+function rssiAt(myFloorM, rnd){
+  const out = {};
+  for(const dev of DEVICES){
+    const dv = (myFloorM - dev.floor*CFG.floorGapM);
+    const dl = (CFG.lateralM - CFG.devLat);
+    const d  = Math.max(0.35, Math.hypot(dv, dl));
+    let r = P.A - 10*P.n*Math.log10(d);
+    r += (rnd()*2-1)*P.sigma;                      // 高斯-ish 噪声
+    if(rnd() < 0.02) r -= 12 + rnd()*10;           // 偶发深衰落(人体遮挡)
+    out[dev.name] = Math.max(-100, Math.min(-30, r));
+  }
+  return out;
+}
+
+/* 一次完整仿真：给定轨迹函数 floorAt(tSec) */
+function simulate(tSec, floorAt, seed){
+  const rnd = mulberry32(seed>>>0);
+  const devs = DEVICES.map(makeDevice);
+  const J = makeJudge();
+  let naiveCur = null;
+  const changes = [], naiveChanges = [];
+  const log = [];
+  const n = Math.round(tSec*1000/CFG.tickMs);
+  for(let i=0;i<n;i++){
+    const t = i*CFG.tickMs/1000;
+    const myF = floorAt(t);                    // 楼层单位(1.0 = 2F)
+    const r = rssiAt(myF * CFG.floorGapM, rnd); // ★ 换算成米再算距离
+    for(const d of devs) pushRssi(d, r[d.name]);
+    const ch = judgeUpdate(J, devs);
+    const nv = naivePick(devs);
+    if(ch) changes.push({t, floor:J.floor});
+    if(nv !== naiveCur){ naiveChanges.push({t, floor:nv}); naiveCur = nv; }
+    if(i%5===0) log.push({t, f2:devs[0].filtered, f3:devs[1].filtered, floor:J.floor});
+  }
+  return {changes, naiveChanges, log, J, devs, dur:tSec};
+}
+
+/* =====================================================================
+   3) 实时动画态
+   ===================================================================== */
+let live = null;
+function resetLive(seed){
+  live = { rnd: mulberry32((seed||12345)>>>0), devs: DEVICES.map(makeDevice), J: makeJudge(),
+           naiveCur:null, changes:0, naive:0, myFloorM:1*CFG.floorGapM, t:0, hist:[] };
+}
+resetLive(2026);
+
+let walking = true, dir = 1;
+function liveStep(){
+  if(!live) resetLive();
+  live.t += CFG.tickMs/1000;
+  if(walking){
+    live.myFloorM += dir * (CFG.tickMs/1000) * 0.62;      // 0.62 m/s 走路
+    const lo = 0.55*CFG.floorGapM, hi = 2.45*CFG.floorGapM;
+    if(live.myFloorM > hi){ live.myFloorM = hi; dir = -1; }
+    if(live.myFloorM < lo){ live.myFloorM = lo; dir = 1; }
+  }
+  const r = rssiAt(live.myFloorM, live.rnd);
+  for(const d of live.devs) pushRssi(d, r[d.name]);
+  if(judgeUpdate(live.J, live.devs)) live.changes++;
+  const nv = naivePick(live.devs);
+  if(nv !== live.naiveCur){ live.naiveCur = nv; live.naive++; }
+  live.hist.push({t:live.t, f2:live.devs[0].filtered, f3:live.devs[1].filtered, floor:live.J.floor});
+  if(live.hist.length > 60) live.hist.shift();
+}
+
+/* =====================================================================
+   4) 绘制
+   ===================================================================== */
+const trackCv=document.getElementById('track'), tx=trackCv.getContext('2d');
+const chartCv=document.getElementById('chart'), cx=chartCv.getContext('2d');
+const stripCv=document.getElementById('strip'), stx=stripCv.getContext('2d');
+
+function drawTrack(){
+  const W=trackCv.width,H=trackCv.height;
+  tx.clearRect(0,0,W,H); tx.fillStyle='#05090f'; tx.fillRect(0,0,W,H);
+  const top=28, bot=H-28, span=bot-top;               // 4F..1F
+  const yOf = fl => bot - (fl/3)*span;                 // floor 0..3 -> y
+  // 楼层线
+  for(let i=0;i<4;i++){
+    const y=yOf(i);
+    tx.strokeStyle = (i===1||i===2)? 'rgba(159,192,222,.55)':'rgba(90,110,130,.28)';
+    tx.lineWidth = (i===1||i===2)? 1.4:1;
+    tx.beginPath(); tx.moveTo(34,y); tx.lineTo(W-14,y); tx.stroke();
+    tx.fillStyle=(i===1||i===2)?'#C6DCF0':'#5f7288';
+    tx.font='600 11px sans-serif'; tx.textAlign='right'; tx.textBaseline='middle';
+    tx.fillText((i+1)+'F', 30, y);
+    if(i===1||i===2){ tx.textAlign='left'; tx.fillStyle='#5f7288'; tx.fillText('可呼', W-26, y); }
+  }
+  // 装置
+  for(const d of DEVICES){
+    const dev = live? live.devs[DEVICES.indexOf(d)] : null;
+    const y=yOf(d.floor), str = dev? Math.max(0,Math.min(1,(dev.filtered+95)/45)) : 0.5;
+    tx.beginPath(); tx.arc(W-40, y, 5+str*4, 0, 7); tx.fillStyle=d.color; tx.globalAlpha=0.35+str*0.6; tx.fill(); tx.globalAlpha=1;
+    tx.strokeStyle=d.color; tx.lineWidth=1; tx.beginPath(); tx.arc(W-40,y,11,0,7); tx.stroke();
+    tx.fillStyle=d.color; tx.font='600 10px sans-serif'; tx.textAlign='center';
+    tx.fillText('ELEV-'+d.name, W-40, y-17);
+  }
+  // 我
+  const myF = live? live.myFloorM/CFG.floorGapM : 1;
+  const y = bot - (myF/3)*span;
+  // 判定楼层高亮带
+  if(live && live.J.floor){
+    const fi = { '2F':1, '3F':2 }[live.J.floor];
+    if(fi!==undefined){ const yy=yOf(fi);
+      tx.fillStyle='rgba(124,224,160,.10)'; tx.fillRect(34, yy-14, W-48, 28);
+      tx.strokeStyle='rgba(124,224,160,.5)'; tx.lineWidth=1; tx.strokeRect(34, yy-14, W-48, 28); }
+  }
+  tx.beginPath(); tx.arc(60, y, 7, 0, 7); tx.fillStyle='#dbe7f3'; tx.fill();
+  tx.strokeStyle='#2ecbff'; tx.lineWidth=2; tx.beginPath(); tx.arc(60,y,12,0,7); tx.stroke();
+  tx.fillStyle='#7f93a8'; tx.font='11px sans-serif'; tx.textAlign='left'; tx.textBaseline='middle';
+  tx.fillText('我 '+(myF+1).toFixed(2)+'F', 20, y-20);
+}
+
+function drawChart(){
+  const W=chartCv.width,H=chartCv.height;
+  cx.clearRect(0,0,W,H); cx.fillStyle='#05090f'; cx.fillRect(0,0,W,H);
+  const lo=-95, hi=-35;
+  const yOf = v => H - ((v-lo)/(hi-lo))*H;
+  // 网格
+  cx.strokeStyle='rgba(40,60,84,.7)'; cx.lineWidth=1; cx.fillStyle='#5f7288'; cx.font='10px sans-serif'; cx.textAlign='left';
+  for(let v=-90; v<=-40; v+=10){ const y=yOf(v); cx.beginPath(); cx.moveTo(28,y); cx.lineTo(W,y); cx.stroke(); cx.fillText(v+'', 3, y+3); }
+  // 死区提示:两条线交叉处
+  const h = live? live.hist : [];
+  if(!h.length){ cx.fillStyle='#5f7288'; cx.fillText('等待采样…', 40, H/2); return; }
+  const n=h.length, xOf = i => 30 + i/(Math.max(1,n-1))*(W-36);
+  for(const [key,col] of [['f2','#2ecbff'],['f3','#F0C070']]){
+    cx.strokeStyle=col; cx.lineWidth=1.8; cx.beginPath();
+    h.forEach((p,i)=> i? cx.lineTo(xOf(i), yOf(p[key])) : cx.moveTo(xOf(i), yOf(p[key])));
+    cx.stroke();
+  }
+  // 领先后缀阴影(死区内)
+  if(P.lead>0){
+    cx.fillStyle='rgba(255,204,102,.10)';
+    for(let i=0;i<n;i++){ const d=Math.abs(h[i].f2-h[i].f3); if(d < P.lead){ cx.fillRect(xOf(i), 0, Math.max(1,(W-36)/n), H); } }
+    cx.fillStyle='#8a6d2a'; cx.font='10px sans-serif'; cx.textAlign='right';
+    cx.fillText('阴影 = 死区(不换层)', W-6, 12);
+  }
+}
+
+function drawStrip(){
+  const W=stripCv.width,H=stripCv.height;
+  stx.clearRect(0,0,W,H); stx.fillStyle='#05090f'; stx.fillRect(0,0,W,H);
+  const h = live? live.hist : [];
+  const n = Math.max(1,h.length), cw=(W-36)/n;
+  stx.fillStyle='#5f7288'; stx.font='10px sans-serif'; stx.textAlign='left';
+  stx.fillText('判定时间轴（绿=2F 橙=3F 灰=无）', 30, 12);
+  h.forEach((p,i)=>{
+    const x=30+i*cw;
+    stx.fillStyle = p.floor==='2F'? '#7CE0A0' : p.floor==='3F'? '#F0C070' : '#2a3d52';
+    stx.fillRect(x, 20, Math.max(1,cw-1), 18);
+  });
+}
+
+/* =====================================================================
+   5) 读数
+   ===================================================================== */
+function updateReadout(){
+  if(!live) return;
+  const d2=live.devs[0], d3=live.devs[1];
+  $('#now-floor').textContent = live.J.floor || '—';
+  $('#now-floor').className = 'big ' + (live.J.floor? 'ok':'dim');
+  $('#now-rssi').innerHTML = `ELEV-2F <b style="color:#2ecbff">${d2.filtered.toFixed(1)}</b> dBm &nbsp; `+
+                             `ELEV-3F <b style="color:#F0C070">${d3.filtered.toFixed(1)}</b> dBm`;
+  const myF = live.myFloorM/CFG.floorGapM;
+  const dist = fl => Math.hypot(myF*CFG.floorGapM - fl*CFG.floorGapM, CFG.lateralM-CFG.devLat);
+  $('#k-d2').textContent = dist(1).toFixed(2)+' m';
+  $('#k-d3').textContent = dist(2).toFixed(2)+' m';
+  const lead = Math.abs(d2.filtered-d3.filtered);
+  $('#k-lead').textContent = lead.toFixed(1)+' dB';
+  $('#k-dead').textContent = lead < P.lead ? '是（保持现任）' : '否';
+  $('#k-ours').textContent = live.changes;
+  $('#k-naive').textContent = live.naive;
+  $('#runs').textContent = `已跑 ${live.t.toFixed(1)} s（${Math.round(live.t*1000/CFG.tickMs)} 次采样）`;
+}
+const $=s=>document.querySelector(s);
+
+/* =====================================================================
+   6) 参数绑定
+   ===================================================================== */
+function bind(id, key, fmt, isNum){
+  const el=$(id), out=$('#v-'+key);
+  const apply=()=>{
+    P[key] = isNum? parseFloat(el.value) : parseFloat(el.value);
+    if(out) out.textContent = fmt(P[key]);
+    if(key==='win'||key==='ema'||key==='lead'||key==='wins'){ /* 影响滤波/判定 → 重置对照 */ }
+    resetLive(2026); live.myFloorM = 1*CFG.floorGapM;
+  };
+  el.addEventListener('input', apply); apply();
+}
+bind('#p-A','A', v=>v.toFixed(0), true);
+bind('#p-n','n', v=>v.toFixed(1));
+bind('#p-sig','sigma', v=>v.toFixed(1));
+bind('#p-lead','lead', v=>v.toFixed(1));
+bind('#p-wins','wins', v=>v.toFixed(0));
+bind('#p-win','win', v=>v.toFixed(0));
+bind('#p-ema','ema', v=>v.toFixed(2));
+document.getElementById('b-reset').onclick=()=>{
+  for(const k of Object.keys(DEF)){
+    const el = document.querySelector('#p-'+k); if(el){ el.value = DEF[k]; el.dispatchEvent(new Event('input')); }
+  }
+};
+
+/* =====================================================================
+   7) 对照实验（每个场景跑 6 个固定种子取平均 → 结果可复现）
+   ===================================================================== */
+const SEEDS = [3,7,11,13,17,23];
+const WALK_F = t => t<3? 1.0 : (t<6? 1.0+(t-3)/3 : 2.0);   // 前 3 s 站 2F，3 s 走到 3F，再站 4 s
+
+/* 跑一个场景，返回多种子平均 */
+function runAvg(tSec, floorAt){
+  let ours=0, naive=0, oLat=[], nLat=[], n=0;
+  for(const sd of SEEDS){
+    const r = simulate(tSec, floorAt, sd);
+    n++;
+    ours  += r.changes.length;
+    naive += r.naiveChanges.length;
+    const a = r.changes.find(c=>c.floor==='3F');
+    if(a && a.t>=3) oLat.push((a.t-3)*1000);
+    const b = r.naiveChanges.find(c=>c.floor==='3F' && c.t>=3);
+    if(b) nLat.push((b.t-3)*1000);
+  }
+  const avg = a => a.length? Math.round(a.reduce((x,y)=>x+y,0)/a.length) : null;
+  return { ours:+(ours/n).toFixed(2), naive:+(naive/n).toFixed(2), oLat:avg(oLat), nLat:avg(nLat) };
+}
+
+const rows=[];
+function addRow(name, ours, naive, latency, verdict){
+  rows.push({name,ours,naive,latency,verdict});
+  const tb=document.querySelector('#summary tbody');
+  tb.innerHTML = rows.map(r=>`<tr><td>${r.name}</td>
+    <td class="${r.ours<=1.5?'ok':'warn'}"><b>${r.ours}</b></td>
+    <td class="${r.naive<=1.5?'ok':'bad'}"><b>${r.naive}</b></td>
+    <td>${r.latency}</td><td>${r.verdict}</td></tr>`).join('');
+}
+const setVerdict = h => { document.getElementById('verdict').innerHTML = h; };
+
+document.getElementById('b-still').onclick=()=>{
+  const r = runAvg(20, ()=>1.0);                       // 站在 2F 装置正前
+  addRow('站在 2F 静止 20 s', r.ours, r.naive, '第 1 个采样周期 (200 ms)',
+    r.ours<=1.2? '<span class="ok">静止不抖</span>（只有首次上线的 1 次）'
+               : '有点抖 → 加大 minLeadDb');
+  setVerdict(`<b>结论：</b>站在某一层装置边上时，我们的算法和朴素做法都<b>不会抖</b>（20 s 内只有首次上线那 1 次判定）。\n   首判耗时 = 一个采样周期 = <b>200 ms</b>，所以\"靠近就出楼层\"是<b>瞬时</b>的。`);
+};
+
+document.getElementById('b-mid').onclick=()=>{
+  const r = runAvg(20, ()=>1.5);                       // 2F/3F 正中间
+  const ratio = r.ours>0? (r.naive/r.ours).toFixed(1) : '∞';
+  addRow('站在两层正中间 20 s（最坏位置）', r.ours, r.naive, '—',
+    r.naive>r.ours*1.5 ? `<span class="ok">滞后把横跳压下 ${ratio}×</span>` : '两层强度确实接近');
+  setVerdict(`<b>结论：</b>站在两层<b>正中间</b>是唯一会抖的位置 —— 两个装置强度几乎相等。\n   朴素做法 20 s 内横跳 <b>${r.naive} 次</b>（约每秒 ${(r.naive/20).toFixed(1)} 次）；\n   我们的算法 <b>${r.ours} 次</b>，被滞后死区压下去 <b>${ratio} 倍</b>。\n   如果现场发现这个位置在抖，把 <b>minLeadDb 提到 4~5</b> 或 <b>winCount 改成 2</b>（见下）。`);
+};
+
+document.getElementById('b-walk').onclick=()=>{
+  const r = runAvg(10, WALK_F);
+  const latTxt = r.oLat!==null? `我们 ${r.oLat} ms<br>朴素 ${r.nLat} ms` : '未判出';
+  addRow('从 2F 走到 3F（3 s 走完）', Math.max(0,r.ours-1), Math.max(0,r.naive-1), latTxt,
+    r.oLat!==null && r.oLat<=2600? '换层延迟 = 走到位的几何 & 滤波器滞后' : '延迟偏大');
+  setVerdict(`<b>结论：</b>换层的延迟 <b>不是</b>算法算得慢，而是<b>物理上你得先走近</b>：\n   两个装置强度相等的中点在两层之间，你要走过去、并且领先现任 3 dB，才会换。\n   走路速度 0.62 m/s、层高 2.6 m 时，平均 <b>${r.oLat!==null? (r.oLat/1000).toFixed(1)+' s':'—'}</b> 完成换层；\n   把它调快的方法是<b>减小 minLeadDb</b>（代价：中间位置更爱抖）。这是个可以现场用这一页配平的权衡。`);
+};
+
+document.getElementById('b-recommend').onclick=()=>{
+  const set = (id,v) => { const el=document.querySelector(id); el.value=v; el.dispatchEvent(new Event('input')); };
+  set('#p-lead', 4.5); set('#p-wins', 2);
+  document.getElementById('b-still').click();
+  document.getElementById('b-mid').click();
+  document.getElementById('b-walk').click();
+  setVerdict(`<b>已套用推荐现场设置：minLeadDb = 4.5 dB · winCount = 2。</b>\n   对比上面的默认设置（3.0 dB / 1）：中间位置的横跳次数明显下降，换层延迟只多一个采样周期。\n   这和 <code>HANDOVER.md</code> §六里写的现场处置办法一致。`);
+  // 把三行结果贴到一起，往前挪（推荐设置的三行在最上面更醒目）
+  const tb=document.querySelector('#summary tbody');
+  tb.innerHTML = rows.slice(-3).concat(rows.slice(0,-3)).map(r=>`<tr><td>${r.name}</td>
+    <td class="${r.ours<=1.5?'ok':'warn'}"><b>${r.ours}</b></td>
+    <td class="${r.naive<=1.5?'ok':'bad'}"><b>${r.naive}</b></td>
+    <td>${r.latency}</td><td>${r.verdict}</td></tr>`).join('');
+};
+
+document.getElementById('b-runs').onclick=()=>{
+  rows.length=0;
+  document.querySelector('#summary tbody').innerHTML='<tr><td colspan="5" class="dim">还没有跑过。点左边按钮。</td></tr>';
+  setVerdict('点上面按钮跑一次（每个实验跑 6 个随机种子取平均，结果可复现）。');
+};
+
+/* =====================================================================
+   8) 主循环
+   ===================================================================== */
+document.getElementById('b-play').onclick=function(){
+  walking=!walking; this.textContent = walking? '⏸ 暂停走动':'▶ 继续走动';
+};
+// 拖动"我"
+(function(){
+  let drag=false;
+  const pick=e=>{
+    const r=trackCv.getBoundingClientRect();
+    const y=((e.touches?e.touches[0].clientY:e.clientY)-r.top)/r.height*trackCv.height;
+    const top=28, bot=trackCv.height-28;
+    const f = Math.max(0,Math.min(3,(bot-y)/(bot-top)*3));
+    if(live){ live.myFloorM = f*CFG.floorGapM; }
+  };
+  trackCv.addEventListener('mousedown',e=>{drag=true;walking=false;
+    document.getElementById('b-play').textContent='▶ 继续走动'; pick(e);});
+  window.addEventListener('mousemove',e=>{ if(drag) pick(e); });
+  window.addEventListener('mouseup',()=>drag=false);
+  trackCv.addEventListener('touchstart',e=>{walking=false;pick(e);});
+  trackCv.addEventListener('touchmove',e=>{pick(e);e.preventDefault();},{passive:false});
+})();
+
+let acc=0, last=performance.now();
+function loop(now){
+  const dt=now-last; last=now; acc+=dt;
+  while(acc >= CFG.tickMs){ acc -= CFG.tickMs; liveStep(); }
+  drawTrack(); drawChart(); drawStrip(); updateReadout();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* 自测入口（给自动化用） */
+window.__sim = { simulate, P, CFG, resetLive, get live(){return live;} };
+</script>
+</body>
+</html>

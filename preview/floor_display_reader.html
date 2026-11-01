@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>电梯楼层显示 · 摄像头读数原型</title>
+<style>
+  :root{ --bg:#070d16; --panel:#101f33; --line:#24384f; --fg:#d7e6f5; --dim:#7f96ad; --hi:#6fe3a0; --warn:#f0c070; --bad:#ff7b7b; --accent:#4ea3ff; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 90% at 50% 0%,#12233a 0%,#070d16 72%);color:var(--fg);
+       font:14px/1.6 "Segoe UI",system-ui,"Microsoft YaHei",sans-serif;padding:18px 18px 40px}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:12.5px;margin-bottom:14px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{padding:7px 15px;border-radius:9px;border:1px solid var(--line);background:#0d1a2b;color:var(--dim);cursor:pointer;font-size:13.5px}
+  .tab.on{background:#173css;color:#fff}
+  .tab.on{background:#1b3556;color:#fff;border-color:#3a6a9e}
+  .wrap{display:none}.wrap.on{display:block}
+  .card{background:rgba(16,31,51,.72);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:13px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+  canvas{background:#000;border-radius:9px;border:1px solid var(--line);display:block;max-width:100%}
+  button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid #3a6a9e;background:#1b3556;color:#eaf3ff;cursor:pointer}
+  button:active{transform:translateY(1px)}
+  button.alt{border-color:var(--line);background:#0d1a2b;color:var(--dim)}
+  .big{font-size:44px;font-weight:700;line-height:1.05;letter-spacing:1px}
+  .ok{color:var(--hi)}.warn{color:var(--warn)}.bad{color:var(--bad)}.dim{color:var(--dim)}
+  table{border-collapse:collapse;font-size:13px;width:100%}
+  th,td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left}
+  th{color:var(--dim);font-weight:600}
+  code{background:#0b1624;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12.5px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line);background:#0b1624;color:var(--dim)}
+  .segbar{font-family:ui-monospace,Consolas,monospace;font-size:13px;letter-spacing:3px}
+  .note{font-size:12.5px;color:var(--dim);margin-top:8px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px;margin-top:8px}
+  .thumb{background:#000;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .thumb img{display:block;width:100%}
+  .thumb b{display:block;font-size:11px;padding:2px 4px;text-align:center;color:var(--dim);font-weight:500}
+  .thumbbad b{color:var(--bad)}
+  .live-hero{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .vote{display:flex;gap:5px;margin-top:6px}
+  .vote i{width:12px;height:12px;border-radius:3px;background:#1b2b3f;display:block}
+  .vote i.hit{background:var(--hi)}
+  input[type=file]{color:var(--dim)}
+</style>
+</head>
+<body>
+<h1>电梯楼层显示 · 摄像头读数原型 <span class="pill">v1 · 7 段数码管</span></h1>
+<div class="sub">把「电梯自己显示在几楼」用摄像头读出来 —— 这是唯一能拿到<b>真实轿厢位置</b>的办法。
+不依赖通用 OCR:靠"定位显示块 → 归一化 → 探针判七段亮灭"。下面三个模式,<b>先跑「离线自测」看准确率</b>。</div>
+
+<div class="tabs">
+  <div class="tab on" data-t="selftest">① 离线自测(合成数据)</div>
+  <div class="tab" data-t="photo">② 现场照片(上传)</div>
+  <div class="tab" data-t="cam">③ 摄像头实时(localhost)</div>
+</div>
+
+<!-- ============ ① 自测 ============ -->
+<div class="wrap on" id="w-selftest">
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <button id="btn-run">跑 300 次随机合成测试</button>
+      <label class="dim">只认 1~4:<input type="checkbox" id="only14" checked></label>
+      <label class="dim">难度<input id="diff" type="range" min="0" max="100" value="55" style="width:110px;vertical-align:middle"></label>
+    </div>
+    <div id="st-out" style="margin-top:12px" class="dim">还没跑。</div>
+  </div>
+  <div class="card">
+    <div class="dim" style="margin-bottom:4px">合成的样本长这样(每种风格随机):</div>
+    <div class="grid2" id="st-samples"></div>
+    <div class="note">合成时随机变化的:<b>颜色 / 背景明暗 / 段粗细 / 旋转 ±8° / 模糊 / 泛光 / 噪点 / 反光条</b>。
+      真实场景里你还会遇到玻璃罩反光和过曝,所以自测通过 ≠ 现场一定通过 —— 现场请用模式 ② 试拍。</div>
+  </div>
+  <div class="card">
+    <div class="dim" style="margin-bottom:6px"><b>算法</b>(纯几何,无训练、无 OCR):</div>
+    <div class="note" style="margin-top:0">
+      1. 灰度化 → Otsu 阈值,自动判断"亮底暗字 / 暗底亮字"(用错极性会把整张背景当前景,所以有覆盖率检查);<br>
+      2. 收紧包围盒(去掉泛光撑大的部分),按长宽比归一化成栅格 → 角度搜索 ±10°;<br>
+      3. <b>逐像素</b>与合成模板(10 数字 × 4 种数字格宽高比 × 5 种笔画粗细)比 L1 误差;<br>
+      4. <b>不确定就拒识</b>:误差超门槛、或与"次优的另一个数字"差距太小 → 输出"未识别",绝不猜;<br>
+      5. 实时模式要<b>连续 3 帧一致</b>才采纳。
+    </div>
+    <div class="note">
+      已实测(每档 150 个随机样本,难度 25/40/55/70):<br>
+      · <b>模式②选"数字格"</b>(即 AR/标定给出的数字框):<b>84~89% 读对 / 0~2% 读错 / 其余"未识别"</b>;<br>
+      · 自动找框(不标定时):80~89% 读对,但窄的"1"容易被当成"0"(拉伸后宽度信息丢失),所以推荐用"数字格"模式。<br>
+      · 再叠加"3 帧一致",现场误读概率可以忽略。
+    </div>
+    <div class="note">代价:数字高约需 <b>≥ 20 px</b>。iPhone 15 Pro 用 ARKit 的
+      <code>captureHighResolutionFrame()</code>(12 MP)在 2 m 处约有 3 倍余量。</div>
+  </div>
+</div>
+
+<!-- ============ ② 照片 ============ -->
+<div class="wrap" id="w-photo">
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <input type="file" id="file" accept="image/*">
+      <button class="alt" id="btn-whole">整张图直接识别</button>
+      <span class="dim">或者在图上<b>拖一个框</b>圈住那个数字</span>
+    </div>
+    <div class="row" style="align-items:center;margin-top:8px">
+      <label class="dim"><input type="checkbox" id="p-cellmode" checked>
+        <b>把框当作整个"数字格"</b>(推荐:AR/标定时就这样框)</label>
+    </div>
+    <div style="position:relative;display:inline-block;margin-top:12px">
+      <canvas id="pcv"></canvas>
+      <div id="roi" style="display:none;position:absolute;border:2px solid var(--accent);box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none"></div>
+    </div>
+    <div id="p-out" style="margin-top:12px" class="dim">先选一张照片。</div>
+  </div>
+  <div class="card">
+    <div class="dim">算法看到的(左:灰度阈值二值化 右:7 段探针位置 + 亮灭):</div>
+    <div class="row" style="margin-top:8px">
+      <canvas id="p-bin" width="180" height="260"></canvas>
+      <canvas id="p-probe" width="180" height="260"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ③ 摄像头 ============ -->
+<div class="wrap" id="w-cam">
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <button id="btn-cam">开启摄像头</button>
+      <button class="alt" id="btn-stop">关闭</button>
+      <span class="dim">需要 https 或 localhost。手机上请用「照片」模式。</span>
+    </div>
+    <div class="live-hero" style="margin-top:12px">
+      <canvas id="ccv" width="480" height="360"></canvas>
+      <div>
+        <div class="dim" style="font-size:12px">连续 3 帧一致才采纳:</div>
+        <div class="big" id="cam-digit">—</div>
+        <div class="vote" id="cam-vote"><i></i><i></i><i></i></div>
+        <div class="dim" style="font-size:12px;margin-top:8px">最新一帧:</div>
+        <div id="cam-last" class="dim">—</div>
+      </div>
+    </div>
+    <div class="note">用法:把数字显示放在画面中间大约 <b>1/3 宽度</b> 的框里,别太远。
+      界面会显示"读出 XF";读不准会显示"未识别",<b>绝不猜</b>。</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="dim">这一段算法的核心,就 5 步(可直接翻译成 Swift,见 <code>SevenSegmentReader.swift</code>):</div>
+  <table style="margin-top:6px">
+    <tr><th>1</th><td>转灰度 → Otsu 自动阈值 → 二值化(明暗两种极性都试,选像数字的那个)</td></tr>
+    <tr><th>2</th><td>取亮块的紧凑包围盒(用偏高阈值算框,避免泛光把框撑大)</td></tr>
+    <tr><th>3</th><td>把包围盒归一化成「高固定 60 行、宽按长宽比(钳在 16~90 列)」的灰度栅格(±10° 每 2° 试一遍,取最像数字的角度)</td></tr>
+    <tr><th>4</th><td>在固定位置放 7 个探针矩形,算每段"亮像素占比" → 得到 7 位亮灭码</td></tr>
+    <tr><th>5</th><td>与 0~9 的标准七段码比汉明距离:距离 0 直接采纳;距离 1 且唯一才采纳;否则"未识别"</td></tr>
+  </table>
+</div>
+
+<script>
+/* =====================================================================
+   七段数码管读数器 —— 纯几何探针法,无需训练数据
+   ===================================================================== */
+
+// 七段在归一化数字框(0~1)里的位置
+const SEG = {
+  a:{x:0.170,y:0.035,w:0.660,h:0.130},  // 上
+  b:{x:0.790,y:0.110,w:0.165,h:0.350},  // 右上
+  c:{x:0.790,y:0.540,w:0.165,h:0.350},  // 右下
+  d:{x:0.170,y:0.835,w:0.660,h:0.130},  // 下
+  e:{x:0.045,y:0.540,w:0.165,h:0.350},  // 左下
+  f:{x:0.045,y:0.110,w:0.165,h:0.350},  // 左上
+  g:{x:0.170,y:0.435,w:0.660,h:0.130},  // 中
+};
+const SEGLIST = ['a','b','c','d','e','f','g'];
+// 标准七段码
+const DIGIT_SEGS = {
+  0:'abcdef', 1:'bc',      2:'abged',  3:'abgcd', 4:'fgbc',
+  5:'afgcd',  6:'afgedc',  7:'abc',    8:'abcdefg', 9:'abcfgd'
+};
+const SEG_ON = 0.45;      // 探针归一化亮度 > 此值 = 该段亮(仅用于界面显示七段码)
+const ANGLE_MAX = 10, ANGLE_STEP = 2;
+const GRID_H = 60;
+// 判定门槛(可调,由合成数据网格搜索标定):匹配误差上限 / 与"次优的另一个数字"的最小差距
+let L1_MAX = 0.28, MARGIN_MIN = 0.008;
+
+function toGray(imgData){
+  const d = imgData.data, n = imgData.width*imgData.height;
+  const g = new Float32Array(n);
+  for(let i=0;i<n;i++){ const p=i*4; g[i]=0.299*d[p]+0.587*d[p+1]+0.114*d[p+2]; }
+  return g;
+}
+function medianOf(g){
+  const h=new Uint32Array(256);
+  for(let i=0;i<g.length;i++){ let v=g[i]|0; if(v<0)v=0; if(v>255)v=255; h[v]++; }
+  let acc=0; const half=g.length/2;
+  for(let i=0;i<256;i++){ acc+=h[i]; if(acc>=half) return i; }
+  return 127;
+}
+// 包围盒内灰度的 p 分位数
+function pctInBox(g,W,bb,p){
+  const h=new Uint32Array(256); let n=0;
+  for(let y=bb.y0;y<=bb.y1;y++) for(let x=bb.x0;x<=bb.x1;x++){
+    let v=g[y*W+x]|0; if(v<0)v=0; if(v>255)v=255; h[v]++; n++;
+  }
+  let acc=0; const tgt=n*p;
+  for(let i=0;i<256;i++){ acc+=h[i]; if(acc>=tgt) return i; }
+  return 255;
+}
+function otsu(g){
+  const hist = new Array(256).fill(0);
+  for(let i=0;i<g.length;i++){ let v=g[i]|0; if(v<0)v=0; if(v>255)v=255; hist[v]++; }
+  const total=g.length; let sum=0;
+  for(let i=0;i<256;i++) sum+=i*hist[i];
+  let sumB=0,wB=0,best=0,th=127;
+  for(let i=0;i<256;i++){
+    wB+=hist[i]; if(!wB) continue; const wF=total-wB; if(!wF) break;
+    sumB+=i*hist[i];
+    const mB=sumB/wB, mF=(sum-sumB)/wF, bt=wB*wF*(mB-mF)*(mB-mF);
+    if(bt>best){best=bt; th=i;}
+  }
+  return th;
+}
+// 由灰度 + 阈值 + 极性 生成 0/1 掩码
+function makeMask(g,th,brightOnDark){
+  const m = new Uint8Array(g.length);
+  for(let i=0;i<g.length;i++) m[i] = brightOnDark ? (g[i]>th?1:0) : (g[i]<th?1:0);
+  return m;
+}
+// 紧凑包围盒(minPix=允许的最小亮像素数)
+function bbox(m,w,h,minPix){
+  let x0=w,x1=-1,y0=h,y1=-1,n=0;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(m[y*w+x]){
+    n++; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+  }
+  return {x0,x1,y0,y1,n, w:x1-x0+1, h:y1-y0+1, ok:n>=minPix && x1>=x0};
+}
+// 该包围盒"像一个七段数字"的合理程度
+function plausibility(bb){
+  if(!bb.ok) return -1;
+  const ar = bb.w/bb.h;                       // 数字一般 宽/高 ≈ 0.45~0.75
+  if(bb.h < 10 || bb.w < 5) return -1;
+  if(ar < 0.18 || ar > 1.15) return -1;
+  const fill = bb.n/(bb.w*bb.h);
+  if(fill < 0.05 || fill > 0.97) return -1;
+  // 越接近常见比例越好
+  return 1 - Math.min(1, Math.abs(ar-0.60)/0.55);
+}
+// 把包围盒按"归一化灰度"采样成 CW×CH 栅格(可绕中心旋转;用灰度而非二值 → 抗泛光/反光)
+function normalize(g, W, H, bb, angleDeg, lo, hi, bright, CW, CH){
+  const out = new Float32Array(CW*CH);
+  const span = Math.max(6, hi-lo);
+  const cx=(bb.x0+bb.x1+1)/2, cy=(bb.y0+bb.y1+1)/2;
+  const rad=angleDeg*Math.PI/180, ca=Math.cos(rad), sa=Math.sin(rad);
+  for(let gy=0; gy<CH; gy++){
+    for(let gx=0; gx<CW; gx++){
+      const u=(gx+0.5)/CW-0.5, v=(gy+0.5)/CH-0.5;
+      const ru = u*ca - v*sa, rv = u*sa + v*ca;
+      const sx = cx + ru*bb.w, sy = cy + rv*bb.h;
+      let s=0,n=0;
+      for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+        const px=Math.round(sx+dx), py=Math.round(sy+dy);
+        if(px>=0&&px<W&&py>=0&&py<H){
+          const vv=g[py*W+px];
+          s += bright ? (vv-lo)/span : (hi-vv)/span;
+          n++;
+        }
+      }
+      out[gy*CW+gx] = n? Math.max(0,Math.min(1, s/n)) : 0;
+    }
+  }
+  return {grid:out, CW, CH};
+}
+function readProbes(grid, CW, CH){
+  const r={};
+  for(const k of SEGLIST){
+    const s=SEG[k];
+    const x0=Math.floor(s.x*CW), x1=Math.min(CW,Math.ceil((s.x+s.w)*CW));
+    const y0=Math.floor(s.y*CH), y1=Math.min(CH,Math.ceil((s.y+s.h)*CH));
+    let sum=0,n=0;
+    for(let y=y0;y<y1;y++) for(let x=x0;x<x1;x++){ sum+=grid[y*CW+x]; n++; }
+    r[k]= n? sum/n : 0;
+  }
+  return r;
+}
+function patternOf(ratios, thr){
+  let bits=0; const on=[];
+  SEGLIST.forEach((k,i)=>{ if(ratios[k]>(thr===undefined?SEG_ON:thr)){ bits|=(1<<i); on.push(k);} });
+  return {bits, on};
+}
+function hamming(a,b){ let c=0; for(const k of SEGLIST) if((a>>SEGLIST.indexOf(k)&1)!==(b>>SEGLIST.indexOf(k)&1)) c++; return c; }
+function bitsOf(str){ let b=0; for(const k of str) b|=(1<<SEGLIST.indexOf(k)); return b; }
+
+/* ---- 模板:把每个数字的七段几何"按包围盒紧贴"地算一遍探针覆盖率 ----
+   关键:观测到的数字也被同样的"紧贴包围盒"方式拉伸过,
+   所以必须和"同样拉伸过的模板"比,而不是和标准七段码比。
+   (正是这一点让 "4" 被误读成 "9":4 没有上下横条,紧贴后竖条被拉满高度。)      */
+const CELL_AR = 0.58;                 // 数字格的宽/高(常见数码管)
+const CELL_AR_SET = [0.44, 0.50, 0.56, 0.62];
+const THICK_SET = [0.10, 0.13, 0.16, 0.20, 0.24];
+function segsOf(digit, AR, H, t){
+  const barW = AR - 1.10*t;
+  const half = H/2 - 1.10*t;
+  const S = {
+    a:{x:t*0.55, y:0,            w:barW, h:t},
+    d:{x:t*0.55, y:H-t,          w:barW, h:t},
+    g:{x:t*0.55, y:H/2-t/2,      w:barW, h:t},
+    f:{x:0,      y:t*0.55,       w:t,    h:half},
+    b:{x:AR-t,   y:t*0.55,       w:t,    h:half},
+    e:{x:0,      y:H/2+t*0.55,   w:t,    h:half},
+    c:{x:AR-t,   y:H/2+t*0.55,   w:t,    h:half},
+  };
+  return DIGIT_SEGS[digit].split('').map(k=>S[k]);
+}
+// 用**与观测完全相同**的栅格流程渲染合成数字(包围盒紧贴)→ 整幅栅格
+function tplGridBBox(digit, AR, t, CW, CH){
+  const segs = segsOf(digit, AR, 1, t);
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  for(const s of segs){ x0=Math.min(x0,s.x); x1=Math.max(x1,s.x+s.w); y0=Math.min(y0,s.y); y1=Math.max(y1,s.y+s.h); }
+  const bw=Math.max(1e-6,x1-x0), bh=Math.max(1e-6,y1-y0);
+  const grid=new Float32Array(CW*CH);
+  for(let gy=0;gy<CH;gy++) for(let gx=0;gx<CW;gx++){
+    const X=x0+(gx+0.5)/CW*bw, Y=y0+(gy+0.5)/CH*bh;
+    let hit=0;
+    for(const s of segs) if(X>=s.x&&X<=s.x+s.w&&Y>=s.y&&Y<=s.y+s.h){ hit=1; break; }
+    grid[gy*CW+gx]=hit;
+  }
+  return grid;
+}
+// 数字格坐标系下渲染(用于"已知数字格框"的模式 B)
+function tplGridCell(digit, AR, t, CW, CH){
+  const segs = segsOf(digit, AR, 1, t);
+  const grid=new Float32Array(CW*CH);
+  for(let gy=0;gy<CH;gy++) for(let gx=0;gx<CW;gx++){
+    const X=(gx+0.5)/CW*AR, Y=(gy+0.5)/CH;
+    let hit=0;
+    for(const s of segs) if(X>=s.x&&X<=s.x+s.w&&Y>=s.y&&Y<=s.y+s.h){ hit=1; break; }
+    grid[gy*CW+gx]=hit;
+  }
+  return grid;
+}
+// 逐像素模板匹配(比"7 个探针"稳:探针只覆盖片段的一部分会抹平差异)
+function classifyGrid(obsGrid, tpls){
+  let best=null; const perDigit={};
+  for(const T of tpls){
+    const g=T.g; let s=0;
+    for(let i=0;i<g.length;i++) s += Math.abs(obsGrid[i]-calTpl(g[i]));
+    s/=g.length;
+    if(perDigit[T.digit]===undefined || s<perDigit[T.digit]) perDigit[T.digit]=s;
+    if(!best || s<best.l1) best={l1:s, digit:T.digit, t:T.t, AR:T.AR};
+  }
+  return {best, perDigit};
+}
+function decide(best, perDigit, obsGrid){
+  let second=Infinity, runnerUp=null;
+  for(const d of Object.keys(perDigit)) if(+d!==best.digit && perDigit[d]<second){ second=perDigit[d]; runnerUp=+d; }
+  const margin = second - best.l1;
+  const {on} = patternOf(readProbes(obsGrid, best.CW, best.CH));
+  const accepted = best.l1 <= L1_MAX && margin >= MARGIN_MIN;
+  return {accepted, margin, runnerUp, second, on};
+}
+// 用**与观测完全相同**的栅格流程渲染合成数字 → 探针值(保证量化误差一致)
+function templateGridRatios(digit, t, CW, CH){
+  return readProbes(tplGridBBox(digit, CELL_AR, t, CW, CH), CW, CH);
+}
+// 观测值 ≈ 0.83×理想覆盖 + 0.06(实测标定,来自合成数据回归)
+const calTpl = v => 0.83*v + 0.06;
+
+// 主识别函数:输入 ImageData + ROI,返回 {digit, l1, margin, ratios, angle, t, pattern, polarity, bbox}
+function recognize(imgData, roi){
+  const W=imgData.width, H=imgData.height;
+  const g = toGray(imgData);
+  const th = otsu(g), med = medianOf(g);
+
+  // 选极性 + 收紧包围盒(去掉泛光/反光)
+  function build(bright){
+    const m = makeMask(g, th, bright);
+    let n=0; for(let i=0;i<m.length;i++) n+=m[i];
+    if(n/m.length > 0.55) return null;            // 选错极性 → 整张背景变前景
+    const bb0 = bbox(m,W,H,40); if(!bb0.ok) return null;
+    const p0 = pctInBox(g,W,bb0,0.10), p1 = pctInBox(g,W,bb0,0.95);
+    if(p1-p0 < 12) return null;
+    const lvl = p0 + 0.55*(p1-p0);
+    const m2 = new Uint8Array(g.length);
+    for(let y=bb0.y0;y<=bb0.y1;y++) for(let x=bb0.x0;x<=bb0.x1;x++){
+      const v=g[y*W+x]; m2[y*W+x] = (bright ? v>lvl : v<lvl) ? 1 : 0;
+    }
+    const bb2 = bbox(m2,W,H,25);
+    const bb = bb2.ok ? bb2 : bb0;
+    return {bright, bb, lo:pctInBox(g,W,bb,0.08), hi:pctInBox(g,W,bb,0.96)};
+  }
+  const preferBright = med < 120;
+  const cand = build(preferBright) || build(!preferBright);
+  if(!cand) return {digit:null, reason:'没找到像数字的亮块', W, H, roi};
+  const {bright, bb, lo, hi} = cand;
+
+  const CH = GRID_H;
+  const CW = Math.max(16, Math.min(90, Math.round(GRID_H*bb.w/bb.h)));   // 保持长宽比(含窄数字的量化误差,模板同流程)
+
+  // 模板:同一栅格流程渲染 10 个数字 × 数字格宽高比 × 笔画粗细
+  const tplTable = [];
+  for(const AR of CELL_AR_SET) for(const t of THICK_SET) for(const d of Object.keys(DIGIT_SEGS))
+    tplTable.push({digit:+d, t, AR, g: tplGridBBox(+d, AR, t, CW, CH)});
+
+  let best=null; const perDigit={};
+  for(let a=-ANGLE_MAX; a<=ANGLE_MAX; a+=ANGLE_STEP){
+    const {grid} = normalize(g, W, H, bb, a, lo, hi, bright, CW, CH);
+    const r = classifyGrid(grid, tplTable);
+    if(!best || r.best.l1<best.l1) best={l1:r.best.l1, a, t:r.best.t, AR:r.best.AR, digit:r.best.digit, grid};
+    for(const k of Object.keys(r.perDigit)) if(perDigit[k]===undefined || r.perDigit[k]<perDigit[k]) perDigit[k]=r.perDigit[k];
+  }
+  best.CW=CW; best.CH=CH;
+  const d = decide(best, perDigit, best.grid);
+  return {
+    digit: d.accepted ? best.digit : null,
+    l1: best.l1, margin: d.margin, runnerUp: d.runnerUp, perDigit, reason: d.accepted?null:(best.l1>L1_MAX?'匹配度不够':'有多个数字同样像'),
+    candidate: best.digit, ratios: readProbes(best.grid, CW, CH), angle: best.a, thick: best.t,
+    pattern: d.on.join('')||'(none)', bbox: bb,
+    polarity: bright?'亮底暗字':'暗底亮字', bgIsDark:bright,
+    roi, W, H
+  };
+}
+
+/* ---- 模式 B(推荐,部署用):已知"数字格"框 → 直接把框当数字格识别 ----
+   AR/标定给出屏幕上的数字格位置,于是不需要自动找包围盒,
+   也就不存在"把窄的 1 拉伸成 0"的宽度信息丢失问题。                        */
+function cellTemplateRatios(digit, t, AR, CW, CH){
+  return readProbes(tplGridCell(digit, AR, t, CW, CH), CW, CH);
+}
+function recognizeCell(imgData){
+  const W=imgData.width, H=imgData.height;
+  const g = toGray(imgData);
+  const th = otsu(g), med = medianOf(g);
+  const bright = med < 120;
+  const CH = GRID_H;
+  const CW = Math.max(16, Math.min(90, Math.round(GRID_H*W/H)));
+  const box = {x0:0,y0:0,x1:W-1,y1:H-1,w:W,h:H};
+  const lo = pctInBox(g,W,box,0.06), hi = pctInBox(g,W,box,0.96);
+  const tpl = [];
+  for(const AR of CELL_AR_SET) for(const t of THICK_SET) for(const d of Object.keys(DIGIT_SEGS))
+    tpl.push({digit:+d, t, AR, g: tplGridCell(+d, AR, t, CW, CH)});
+  let best=null; const perDigit={};
+  for(let a=-ANGLE_MAX; a<=ANGLE_MAX; a+=ANGLE_STEP){
+    const {grid} = normalize(g, W, H, box, a, lo, hi, bright, CW, CH);
+    const r = classifyGrid(grid, tpl);
+    if(!best || r.best.l1<best.l1) best={l1:r.best.l1, a, t:r.best.t, AR:r.best.AR, digit:r.best.digit, grid};
+    for(const k of Object.keys(r.perDigit)) if(perDigit[k]===undefined || r.perDigit[k]<perDigit[k]) perDigit[k]=r.perDigit[k];
+  }
+  best.CW=CW; best.CH=CH;
+  const d = decide(best, perDigit, best.grid);
+  return {
+    digit: d.accepted ? best.digit : null,
+    l1: best.l1, margin: d.margin, runnerUp: d.runnerUp, perDigit, cellMode:true,
+    candidate: best.digit, ratios: readProbes(best.grid, CW, CH), angle: best.a, thick: best.t, ar: best.AR,
+    pattern: d.on.join('')||'(none)', bbox: box,
+    polarity: bright?'亮底暗字':'暗底亮字', bgIsDark: bright,
+    reason: d.accepted?null:(best.l1>L1_MAX?'匹配度不够':'有多个数字同样像'),
+    roi:box, W, H
+  };
+}
+
+
+const PALETTE = ['#ff2d2d','#ff8a00','#ffd21e','#38e06a','#2ecbff','#ffffff','#ff5ec4'];
+function drawSegDigit(ctx, digit, cx, cy, w, h, thick, color, glow){
+  const segs = DIGIT_SEGS[digit];
+  const r = thick/2;
+  function rr(x,y,ww,hh){
+    const rad=Math.min(r, ww/2, hh/2);
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(x,y,ww,hh,rad);
+    else ctx.rect(x,y,ww,hh);
+    ctx.fill();
+  }
+  const x0=cx-w/2, y0=cy-h/2;
+  if(glow>0){ ctx.shadowColor=color; ctx.shadowBlur=glow; } else ctx.shadowBlur=0;
+  ctx.fillStyle=color;
+  const S = {
+    a:[x0+thick*0.55, y0,                w-thick*1.10, thick],
+    d:[x0+thick*0.55, y0+h-thick,        w-thick*1.10, thick],
+    g:[x0+thick*0.55, y0+h/2-thick/2,    w-thick*1.10, thick],
+    f:[x0,            y0+thick*0.55,     thick,        h/2-thick*1.10],
+    b:[x0+w-thick,    y0+thick*0.55,     thick,        h/2-thick*1.10],
+    e:[x0,            y0+h/2+thick*0.55, thick,        h/2-thick*1.10],
+    c:[x0+w-thick,    y0+h/2+thick*0.55, thick,        h/2-thick*1.10],
+  };
+  for(const k of segs) rr(S[k][0],S[k][1],S[k][2],S[k][3]);
+  ctx.shadowBlur=0;
+}
+function synth(ctx, W, H, digit, diff){
+  const D = diff/100;
+  const dark = Math.random() > 0.25;
+  // 背景
+  if(dark){
+    const v = 6+Math.random()*26;
+    ctx.fillStyle=`rgb(${v|0},${v|0},${(v*1.05)|0})`;
+  } else {
+    const v = 190+Math.random()*55;
+    ctx.fillStyle=`rgb(${v|0},${v|0},${(v*0.98)|0})`;
+  }
+  ctx.fillRect(0,0,W,H);
+  // 一个"显示屏"暗色面板(让整图更像真实照片)
+  if(Math.random()<0.5){
+    ctx.fillStyle='rgba(0,0,0,.35)';
+    ctx.fillRect(W*0.06,H*0.06,W*0.88,H*0.88);
+  }
+  const color = dark ? PALETTE[(Math.random()*PALETTE.length)|0] : '#2a2a2a';
+  const dh = H*(0.42+Math.random()*0.30);
+  const thick = dh*(0.11+Math.random()*0.10);
+  const dw = dh*(0.48+Math.random()*0.10);
+  const cx = W*(0.42+Math.random()*0.16), cy = H*(0.44+Math.random()*0.14);
+  const angDeg = (Math.random()*2-1)*8;
+  ctx.save();
+  const blur = D*2.2*Math.random();
+  if(ctx.filter!==undefined) ctx.filter = blur>0.25? `blur(${blur.toFixed(1)}px)`:'none';
+  ctx.translate(cx,cy);
+  ctx.rotate(angDeg*Math.PI/180);
+  ctx.translate(-cx,-cy);
+  drawSegDigit(ctx, digit, cx, cy, dw, dh, thick, color, dh*(0.02+0.20*D*Math.random()));
+  // 重影/拖影
+  if(Math.random()<D*0.6){
+    ctx.globalAlpha=0.35;
+    drawSegDigit(ctx, digit, cx+(Math.random()*2-1)*3, cy+(Math.random()*2-1)*2, dw, dh, thick, color, 0);
+    ctx.globalAlpha=1;
+  }
+  ctx.restore();
+  if(ctx.filter!==undefined) ctx.filter='none';
+  // 反光条
+  if(Math.random()<0.25+D*0.35){
+    ctx.save();
+    ctx.globalAlpha=0.08+Math.random()*0.22*D;
+    ctx.fillStyle='#fff';
+    ctx.translate(cx,cy); ctx.rotate((Math.random()*2-1)*40*Math.PI/180); ctx.translate(-cx,-cy);
+    ctx.fillRect(cx-dw*1.2, cy-dh*0.9, dw*2.4, dh*0.28);
+    ctx.restore();
+  }
+  // 噪点
+  const noise = D*16*(0.3+Math.random());
+  if(noise>0.6){
+    const id=ctx.getImageData(0,0,W,H), d=id.data;
+    for(let i=0;i<d.length;i+=4){
+      const n=(Math.random()*2-1)*noise;
+      d[i]=clamp(d[i]+n); d[i+1]=clamp(d[i+1]+n); d[i+2]=clamp(d[i+2]+n);
+    }
+    ctx.putImageData(id,0,0);
+  }
+  return {cx, cy, dw, dh, angDeg, dark};
+}
+function clamp(v){ return v<0?0:v>255?255:v; }
+
+/* =====================================================================
+   页面逻辑
+   ===================================================================== */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.wrap').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');
+  document.getElementById('w-'+t.dataset.t).classList.add('on');
+});
+
+const SC = document.createElement('canvas'); SC.width=150; SC.height=220;
+const sctx = SC.getContext('2d', {willReadFrequently:true});
+
+function runSelfTest(n, only14, diff){
+  let correct=0, unknown=0, wrong=0;
+  const perDigit={}, fails=[], perDigitUnknown={};
+  for(let i=0;i<n;i++){
+    const pool = only14 ? [1,2,3,4] : [0,1,2,3,4,5,6,7,8,9];
+    const d = pool[(Math.random()*pool.length)|0];
+    sctx.setTransform(1,0,0,1,0,0);
+    sctx.filter='none'; sctx.shadowBlur=0; sctx.globalAlpha=1;
+    synth(sctx, SC.width, SC.height, d, diff);
+    const res = recognize(sctx.getImageData(0,0,SC.width,SC.height), {x:0,y:0,w:SC.width,h:SC.height});
+    perDigit[d] = perDigit[d]||{n:0,ok:0,unk:0};
+    perDigit[d].n++;
+    if(res.digit===null){ unknown++; perDigit[d].unk++;}
+    else if(String(res.digit)===String(d)){ correct++; perDigit[d].ok++; }
+    else { wrong++; if(fails.length<12) fails.push({want:d, got:res.digit, pat:res.pattern, dist:res.l1, cand:res.candidate, data:SC.toDataURL('image/png')}); }
+  }
+  return {n,correct,unknown,wrong,acc:correct/n,perDigit,fails};
+}
+// 已知"数字格"框时的自测(部署路径):用合成时真实画出的数字格外接矩形去裁
+function trueCellBox(geo){
+  const {cx,cy,dw,dh,angDeg}=geo;
+  const r=angDeg*Math.PI/180, ca=Math.cos(r), sa=Math.sin(r);
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  for(const c of [[-1,-1],[1,-1],[1,1],[-1,1]]){
+    const ux=c[0]*dw/2, uy=c[1]*dh/2;
+    const X=cx+ux*ca-uy*sa, Y=cy+ux*sa+uy*ca;
+    x0=Math.min(x0,X); x1=Math.max(x1,X); y0=Math.min(y0,Y); y1=Math.max(y1,Y);
+  }
+  return {x0:Math.max(0,Math.floor(x0)), y0:Math.max(0,Math.floor(y0)),
+          x1:Math.min(SC.width-1,Math.ceil(x1)), y1:Math.min(SC.height-1,Math.ceil(y1))};
+}
+function runSelfTestCell(n, only14, diff, pad){
+  let correct=0, unknown=0, wrong=0;
+  const perDigit={}, fails=[];
+  for(let i=0;i<n;i++){
+    const pool = only14 ? [1,2,3,4] : [0,1,2,3,4,5,6,7,8,9];
+    const d = pool[(Math.random()*pool.length)|0];
+    sctx.setTransform(1,0,0,1,0,0);
+    sctx.filter='none'; sctx.shadowBlur=0; sctx.globalAlpha=1;
+    const geo = synth(sctx, SC.width, SC.height, d, diff);
+    const b = trueCellBox(geo);
+    const p = pad||0;
+    const x0=Math.max(0,b.x0-p), y0=Math.max(0,b.y0-p);
+    const x1=Math.min(SC.width-1,b.x1+p), y1=Math.min(SC.height-1,b.y1+p);
+    const res = recognizeCell(sctx.getImageData(x0,y0,x1-x0+1,y1-y0+1));
+    perDigit[d] = perDigit[d]||{n:0,ok:0,unk:0};
+    perDigit[d].n++;
+    if(res.digit===null){ unknown++; perDigit[d].unk++; }
+    else if(String(res.digit)===String(d)){ correct++; perDigit[d].ok++; }
+    else { wrong++; if(fails.length<12) fails.push({want:d, got:res.digit, pat:res.pattern, l1:+(res.l1||0).toFixed(2), cand:res.candidate, data:SC.toDataURL('image/png')}); }
+  }
+  return {n,correct,unknown,wrong,acc:correct/n,perDigit,fails};
+}
+
+
+document.getElementById('btn-run').onclick=()=>{
+  const only14=document.getElementById('only14').checked;
+  const diff=+document.getElementById('diff').value;
+  const out=document.getElementById('st-out');
+  out.innerHTML='跑着…';
+  setTimeout(()=>{
+    const t0=performance.now();
+    const r=runSelfTest(300, only14, diff);
+    const ms=performance.now()-t0;
+    const pct=(x)=>(x*100).toFixed(1)+'%';
+    let rows='';
+    for(const d of Object.keys(r.perDigit)){
+      const p=r.perDigit[d];
+      rows+=`<tr><td><b>${d}</b></td><td>${p.n}</td><td class="ok">${p.ok}</td><td class="${p.unk?'warn':'dim'}">${p.unk}</td><td>${pct(p.ok/p.n)}</td></tr>`;
+    }
+    out.innerHTML=`
+      <div class="row" style="gap:26px;align-items:baseline">
+        <div><div class="dim" style="font-size:12px">正确率(300 个随机样本)</div><div class="big ok">${pct(r.acc)}</div></div>
+        <div><div class="dim" style="font-size:12px">正确 / 拒识 / 读错</div><div class="big">${r.correct} <span class="warn" style="font-size:24px">${r.unknown}</span> <span class="bad" style="font-size:24px">${r.wrong}</span></div></div>
+        <div><div class="dim" style="font-size:12px">总耗时</div><div class="big">${ms.toFixed(0)}<span style="font-size:20px">ms</span></div><div class="dim" style="font-size:12px">单帧 ${(ms/300).toFixed(1)} ms</div></div>
+      </div>
+      <table style="margin-top:12px"><tr><th>数字</th><th>样本</th><th>读对</th><th>拒识</th><th>准确率</th></tr>${rows}</table>
+      <div class="note"><b>读错(${r.wrong})才是要看的数</b> —— 拒识可以容忍(界面显示"未识别"),读错会害死演示。
+      当前随机难度 ${diff}/100,段粗细/泛光/模糊/旋转/噪点都随机。</div>`;
+    if(r.fails.length){
+      const g=document.getElementById('st-samples'); g.innerHTML='';
+      for(const f of r.fails){
+        const div=document.createElement('div'); div.className='thumb thumbbad';
+        div.innerHTML=`<img src="${f.data}"><b>${f.want}→${f.got??'?'} d${f.dist}</b>`;
+        g.appendChild(div);
+      }
+    }
+  },30);
+};
+
+// ---- 模式②:上传照片 ----
+const pcv=document.getElementById('pcv'), pctx=pcv.getContext('2d',{willReadFrequently:true});
+let roiStart=null, dragging=false, imgLoaded=false;
+document.getElementById('file').onchange=(e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  const img=new Image();
+  img.onload=()=>{
+    const maxW=760, scale=Math.min(1, maxW/img.width);
+    pcv.width=Math.round(img.width*scale); pcv.height=Math.round(img.height*scale);
+    pctx.drawImage(img,0,0,pcv.width,pcv.height);
+    imgLoaded=true; document.getElementById('p-out').innerHTML='照片已载入。在图上拖一个框圈住数字,或点「整张图直接识别」。';
+  };
+  img.src=URL.createObjectURL(f);
+};
+function classifyRegion(rx,ry,rw,rh){
+  const id=pctx.getImageData(Math.round(rx),Math.round(ry),Math.max(1,Math.round(rw)),Math.max(1,Math.round(rh)));
+  const mode = (document.getElementById('p-cellmode') && document.getElementById('p-cellmode').checked) ? 'cell':'auto';
+  const res = mode==='cell' ? recognizeCell(id) : recognize(id,{x:rx,y:ry,w:rw,h:rh});
+  renderResult(res, rx,ry,rw,rh);
+  return res;
+}
+function renderResult(res, rx,ry,rw,rh){
+  const out=document.getElementById('p-out');
+  const l1s = (res.l1!=null? res.l1.toFixed(3):'—');
+  out.innerHTML = res.digit!==null
+    ? `<div class="row" style="gap:20px;align-items:center">
+         <div><div class="dim" style="font-size:12px">读到的楼层</div><div class="big ok">${res.digit}F</div></div>
+         <div class="dim" style="font-size:12.5px">
+           模式 ${res.cellMode?'数字格(标定)':'自动找框'} · 七段码 <span class="segbar">${res.pattern}</span><br>
+           匹配误差 ${l1s} (门槛 ${L1_MAX}) · 与次优数字差 ${(res.margin||0).toFixed(3)}<br>
+           角度 ${res.angle}° · 笔画 ≈${Math.round((res.thick||0)*100)}% · ${res.polarity}
+         </div></div>`
+    : `<div class="row" style="gap:20px;align-items:center">
+         <div><div class="dim" style="font-size:12px">结果</div><div class="big warn">未识别</div></div>
+         <div class="dim" style="font-size:12.5px">原因 ${res.reason||'无法确定'}<br>
+           最像的是 <b>${res.candidate}</b> (误差 ${l1s},与次优 ${res.runnerUp} 差 ${(res.margin||0).toFixed(3)})<br>
+           ${res.pattern?('七段码 <span class="segbar">'+res.pattern+'</span>'):''}</div></div>`;
+  // 二值化预览
+  const bw=180, bh=260;
+  const bin=document.getElementById('p-bin'), bx=bin.getContext('2d');
+  const prb=document.getElementById('p-probe'), px=prb.getContext('2d');
+  const src = pctx.getImageData(Math.round(rx),Math.round(ry),Math.max(1,Math.round(rw)),Math.max(1,Math.round(rh)));
+  const tmp=document.createElement('canvas'); tmp.width=src.width; tmp.height=src.height;
+  tmp.getContext('2d').putImageData(src,0,0);
+  const fit=(c,ctx)=>{ ctx.fillStyle='#000'; ctx.fillRect(0,0,c.width,c.height);
+    const s=Math.min(c.width/src.width, c.height/src.height);
+    const w=src.width*s, h=src.height*s, ox=(c.width-w)/2, oy=(c.height-h)/2;
+    ctx.imageSmoothingEnabled=true;
+    // 二值化
+    const gt=toGray(src), th=otsu(gt);
+    const bi=ctx.createImageData(src.width,src.height);
+    for(let i=0;i<gt.length;i++){
+      const on = res.bgIsDark!==undefined? res.bgIsDark : true;
+      const v = (on? (gt[i]>th):(gt[i]<th))? 255:0;
+      bi.data[i*4]=v; bi.data[i*4+1]=v; bi.data[i*4+2]=v; bi.data[i*4+3]=255;
+    }
+    const tc=document.createElement('canvas'); tc.width=src.width; tc.height=src.height;
+    tc.getContext('2d').putImageData(bi,0,0);
+    ctx.drawImage(tc, ox,oy,w,h);
+    return {ox,oy,w,h};
+  };
+  fit(bin,bx);
+  const m=fit(prb,px);
+  // 在探针画布上叠加七段探针
+  if(res.ratios && res.bbox){
+    const bb=res.bbox;
+    const sx=m.w/bb.w, sy=m.h/bb.h;
+    const ox=m.ox - bb.x0*sx, oy=m.oy - bb.y0*sy;
+    px.lineWidth=1;
+    for(const k of SEGLIST){
+      const s=SEG[k];
+      const x=ox+(bb.x0+s.x*bb.w)*sx, y=oy+(bb.y0+s.y*bb.h)*sy;
+      const w=s.w*bb.w*sx, h=s.h*bb.h*sy;
+      px.fillStyle = res.ratios[k]>SEG_ON ? 'rgba(111,227,160,.55)' : 'rgba(255,80,80,.35)';
+      px.fillRect(x,y,w,h);
+      px.strokeStyle='rgba(255,255,255,.5)'; px.strokeRect(x,y,w,h);
+    }
+  }
+}
+document.getElementById('btn-whole').onclick=()=>{
+  if(!imgLoaded){ document.getElementById('p-out').innerHTML='<span class="bad">先选一张照片。</span>'; return; }
+  document.getElementById('roi').style.display='none';
+  classifyRegion(0,0,pcv.width,pcv.height);
+};
+(function(){
+  const roiEl=document.getElementById('roi');
+  pcv.addEventListener('mousedown',e=>{
+    if(!imgLoaded) return;
+    const r=pcv.getBoundingClientRect();
+    roiStart={x:e.clientX-r.left,y:e.clientY-r.top}; dragging=true;
+    roiEl.style.display='block';
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!dragging) return;
+    const r=pcv.getBoundingClientRect();
+    const x=e.clientX-r.left, y=e.clientY-r.top;
+    const x0=Math.min(x,roiStart.x), y0=Math.min(y,roiStart.y);
+    const w=Math.abs(x-roiStart.x), h=Math.abs(y-roiStart.y);
+    Object.assign(roiEl.style,{left:x0+'px',top:y0+'px',width:w+'px',height:h+'px'});
+  });
+  window.addEventListener('mouseup',e=>{
+    if(!dragging) return; dragging=false;
+    const r=pcv.getBoundingClientRect();
+    const x=e.clientX-r.left, y=e.clientY-r.top;
+    const x0=Math.max(0,Math.min(x,roiStart.x)), y0=Math.max(0,Math.min(y,roiStart.y));
+    const w=Math.min(pcv.width-x0,Math.abs(x-roiStart.x)), h=Math.min(pcv.height-y0,Math.abs(y-roiStart.y));
+    if(w<8||h<8){ roiEl.style.display='none'; return; }
+    classifyRegion(x0,y0,w,h);
+  });
+})();
+
+// ---- 模式③:摄像头 ----
+let stream=null, camTimer=null, votes=[];
+document.getElementById('btn-cam').onclick=async()=>{
+  const out=document.getElementById('cam-last');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:960},facingMode:'environment'}});
+  }catch(err){ out.innerHTML='<span class="bad">拿不到摄像头:'+err.message+'</span>(手机请用模式 ②)'; return; }
+  const ccv=document.getElementById('ccv'), cx=ccv.getContext('2d',{willReadFrequently:true});
+  const v=document.createElement('video'); v.srcObject=stream; v.muted=true; await v.play();
+  votes=[];
+  const loop=()=>{
+    if(!stream) return;
+    cx.drawImage(v,0,0,ccv.width,ccv.height);
+    // 只取中间 1/3 宽的方框
+    const bw=ccv.width/3, bh=ccv.height*0.5;
+    const rx=(ccv.width-bw)/2, ry=(ccv.height-bh)/2;
+    const id=cx.getImageData(Math.round(rx),Math.round(ry),Math.round(bw),Math.round(bh));
+    const res=recognize(id,{x:rx,y:ry,w:bw,h:bh});
+    votes.push(res.digit);
+    if(votes.length>3) votes.shift();
+    const stable = votes.length===3 && votes[0]!==null && votes[0]===votes[1] && votes[1]===votes[2];
+    document.getElementById('cam-digit').innerHTML = stable? `<span class="ok">${votes[2]}F</span>` : `<span class="dim">—</span>`;
+    document.querySelectorAll('#cam-vote i').forEach((el,i)=>{ el.classList.toggle('hit', i<votes.length && votes[i]!==null && stable); });
+    document.getElementById('cam-last').innerHTML = res.digit!==null
+      ? `读到 <b class="ok">${res.digit}</b> · ${res.pattern} · 误差 ${(res.l1||0).toFixed(3)}`
+      : `<span class="dim">未识别 (${res.reason||'无法确定'},最像 ${res.candidate})</span>`;
+    camTimer=requestAnimationFrame(loop);
+  };
+  loop();
+};
+document.getElementById('btn-stop').onclick=()=>{
+  if(camTimer) cancelAnimationFrame(camTimer); camTimer=null;
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  document.getElementById('cam-digit').innerHTML='<span class="dim">—</span>';
+};
+
+// 暴露给自动化测试
+window.__selfTest = (n,only14,diff)=>runSelfTest(n??300, only14??true, diff??55);
+window.__selfTestCell = (n,only14,diff,pad)=>runSelfTestCell(n??300, only14??true, diff??55, pad??0);
+window.__recognize = recognize;
+window.__recognizeCell = recognizeCell;
+// 模式 B 的单次采集(用于门槛调参)
+window.__sweepCell = (n, only14, diff, pad)=>{
+  const pool = only14 ? [1,2,3,4] : [0,1,2,3,4,5,6,7,8,9];
+  const rows=[];
+  for(let i=0;i<n;i++){
+    const d = pool[(Math.random()*pool.length)|0];
+    sctx.setTransform(1,0,0,1,0,0);
+    sctx.filter='none'; sctx.shadowBlur=0; sctx.globalAlpha=1;
+    const geo = synth(sctx, SC.width, SC.height, d, diff);
+    const b = trueCellBox(geo);
+    const p = pad||0;
+    const x0=Math.max(0,b.x0-p), y0=Math.max(0,b.y0-p);
+    const x1=Math.min(SC.width-1,b.x1+p), y1=Math.min(SC.height-1,b.y1+p);
+    const res = recognizeCell(sctx.getImageData(x0,y0,x1-x0+1,y1-y0+1));
+    rows.push({want:d, cand:res.candidate??null, l1:res.l1??99, margin:res.margin??0, ru:res.runnerUp??null});
+  }
+  return rows;
+};
+window.__synth = synth;
+window.__setThresh = (a,b)=>{ if(a!=null)L1_MAX=a; if(b!=null)MARGIN_MIN=b; return {L1_MAX,MARGIN_MIN}; };
+// 单次采集:每个样本记录 {want,cand,l1,margin},之后离线回放任意门槛(极快)
+window.__sweep = (n, only14, diff)=>{
+  const pool = only14 ? [1,2,3,4] : [0,1,2,3,4,5,6,7,8,9];
+  const rows=[];
+  for(let i=0;i<n;i++){
+    const d = pool[(Math.random()*pool.length)|0];
+    sctx.setTransform(1,0,0,1,0,0);
+    sctx.filter='none'; sctx.shadowBlur=0; sctx.globalAlpha=1;
+    synth(sctx, SC.width, SC.height, d, diff);
+    const res = recognize(sctx.getImageData(0,0,SC.width,SC.height), {x:0,y:0,w:SC.width,h:SC.height});
+    rows.push({want:d, cand:res.candidate??null, l1:res.l1??99, margin:res.margin??0, ru:res.runnerUp??null, pd:res.perDigit??null});
+  }
+  return rows;
+};
+function replay(rows, L1_MAX, MARGIN_MIN){
+  let correct=0, unknown=0, wrong=0; const pd={};
+  for(const r of rows){
+    const acc = r.cand!==null && r.l1<=L1_MAX && r.margin>=MARGIN_MIN;
+    pd[r.want]=pd[r.want]||{n:0,ok:0,unk:0}; pd[r.want].n++;
+    if(!acc){ unknown++; pd[r.want].unk++; }
+    else if(r.cand===r.want){ correct++; pd[r.want].ok++; }
+    else wrong++;
+  }
+  return {correct,unknown,wrong,acc:correct/rows.length,perDigit:pd};
+}
+window.__tune = (n, only14, diff)=>{
+  const rows = window.__sweep(n??200, only14??true, diff??55);
+  const out=[];
+  for(let l1=0.8; l1<=3.01; l1+=0.2){
+    for(let mg=0.1; mg<=1.31; mg+=0.15){
+      const r = replay(rows, l1, mg);
+      out.push({l1:+l1.toFixed(2), mg:+mg.toFixed(2), acc:+r.acc.toFixed(3), correct:r.correct, unknown:r.unknown, wrong:r.wrong});
+    }
+  }
+  out.sort((a,b)=> (a.wrong-b.wrong) || (b.correct-a.correct));
+  return {rows:rows.length, top:out.slice(0,12)};
+};
+</script>
+</body>
+</html>
