@@ -2,7 +2,6 @@
 build/
 .gradle/
 local.properties
-*.apk
 *.iml
 .idea/
 
@@ -11,5 +10,5 @@ local.properties
 Thumbs.db
 *.log
 
-# 打包产物
+# 打包产物（源码包不入库，发布件放 releases/）
 *.zip
