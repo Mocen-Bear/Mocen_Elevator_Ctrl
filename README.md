@@ -1,4 +1,4 @@
-# Moce_Elevator-Ctrl
+# Mocen_Elevator_Ctrl
 
 校园电梯交互：**Android App** + **ESP32 呼梯固件**。
 
