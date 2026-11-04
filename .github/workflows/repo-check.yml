@@ -1,0 +1,36 @@
+name: repo-check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  required-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检查关键文件是否存在
+        run: |
+          missing=0
+          for f in \
+            README.md \
+            CHANGELOG.md \
+            docs/README.md \
+            docs/BLE_PROTOCOL.md \
+            docs/SHAFT_MODEL.md \
+            firmware/elevator_1F/elevator_1F.ino \
+            firmware/elevator_2F/elevator_2F.ino \
+            firmware/chime_node/chime_node.ino \
+            android/app/src/main/AndroidManifest.xml \
+            android/app/src/main/java/com/mocen/elevator/MainActivity.kt
+          do
+            if [ -f "$f" ]; then
+              echo "OK   $f"
+            else
+              echo "MISS $f"
+              missing=1
+            fi
+          done
+          exit $missing
