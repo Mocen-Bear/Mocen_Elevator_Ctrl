@@ -16,9 +16,17 @@ App 同步渲染双梯井道，并给出"电梯在哪层 / 该往哪走"的指�
 | 路径 | 内容 |
 |---|---|
 | `android/` | Android App 源码（Kotlin，Android Studio / Gradle 直接打开） |
-| `firmware/` | ESP32 固件源码（3 个 `.ino`） |
-| `docs/` | 协议、空间模型、接口、交接、评估与现场演示文档 |
+| `firmware/` | ESP32 固件源码（3 个 `.ino`）+ 烧录说明 |
+| `docs/` | 协议、空间模型、接口、交接、评估与现场演示文档（入口见 [`docs/README.md`](docs/README.md)） |
+| `preview/` | 纯静态原型与自测页（双击 HTML 即可，无需编译） |
+| `mech/` | 增压结构件：CAD 脚本、STL 模型、渲染图 |
 | `presentation/` | 项目展示 PPT（动图已替换为各自首帧静态图） |
+| `media/` | 演示视频等媒体素材 |
+| `packages/` | 按对象拆分的三份交接包（App 对接 / 到站检测 / 井道模型） |
+| `releases/` | 预编译发行包：App APK、固件合并镜像 |
+| `tools/` | 自检脚本（`preflight.ps1`） |
+
+> 版本要点见 [`CHANGELOG.md`](CHANGELOG.md)；常见问题见 [`docs/FAQ.md`](docs/FAQ.md)。
 
 ---
 
@@ -68,6 +76,8 @@ gradle assembleDebug     # 产物 app/build/outputs/apk/debug/app-debug.apk
 
 | 文档 | 内容 |
 |---|---|
+| [`docs/README.md`](docs/README.md) | **文档总索引**（协议 / 说明 / 子目录分类） |
+| [`docs/FAQ.md`](docs/FAQ.md) | 常见问题：为什么只能手动呼梯、能否断网等 |
 | [`docs/BLE_PROTOCOL.md`](docs/BLE_PROTOCOL.md) | BLE 广播、服务/特征与命令回执协议 |
 | [`docs/API.md`](docs/API.md) | 对外接口约定 |
 | [`docs/SHAFT_MODEL.md`](docs/SHAFT_MODEL.md) | 井道/楼层空间模型 |
@@ -81,5 +91,5 @@ gradle assembleDebug     # 产物 app/build/outputs/apk/debug/app-debug.apk
 
 ## 说明
 
-- 本仓库**只含源码与文档**，不含构建产物（`build/`、`.gradle/`、`local.properties`）、APK 与固件 bin。
+- 本仓库含**源码、文档、原型与发行包**（见 `releases/`）；构建中间产物（`build/`、`.gradle/`、`local.properties`）不入库。
 - 电梯装置为自制硬件，**未在本仓库内提供实物**；楼层与角度参数以文档为准。
