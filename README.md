@@ -15,16 +15,18 @@ App 同步渲染双梯井道，并给出"电梯在哪层 / 该往哪走"的指�
 
 | 路径 | 内容 |
 |---|---|
-| `android/` | Android App 源码（Kotlin，Android Studio / Gradle 直接打开） |
-| `firmware/` | ESP32 固件源码（3 个 `.ino`）+ 烧录说明 |
-| `docs/` | 协议、空间模型、接口、交接、评估与现场演示文档（入口见 [`docs/README.md`](docs/README.md)） |
-| `preview/` | 纯静态原型与自测页（双击 HTML 即可，无需编译） |
-| `mech/` | 增压结构件：CAD 脚本、STL 模型、渲染图 |
-| `presentation/` | 项目展示 PPT（动图已替换为各自首帧静态图） |
-| `media/` | 演示视频等媒体素材 |
-| `packages/` | 按对象拆分的三份交接包（App 对接 / 到站检测 / 井道模型） |
-| `releases/` | 预编译发行包：App APK、固件合并镜像 |
-| `tools/` | 自检脚本（`preflight.ps1`） |
+| [`android/`](android/) | Android App 源码（Kotlin，Android Studio / Gradle 直接打开） |
+| [`firmware/`](firmware/) | ESP32 固件源码（3 个 `.ino`）+ 烧录说明 |
+| [`docs/`](docs/) | 协议、空间模型、接口、交接、评估与现场演示文档（入口见 [`docs/README.md`](docs/README.md)） |
+| [`preview/`](preview/) | 纯静态原型与自测页（双击 HTML 即可，无需编译） |
+| [`mech/`](mech/) | 增压结构件：CAD 脚本、STL 模型、渲染图 |
+| [`presentation/`](presentation/) | 项目展示 PPT（动图已替换为各自首帧静态图） |
+| [`media/`](media/) | 演示视频等媒体素材 |
+| [`packages/`](packages/) | 按对象拆分的三份交接包（App 对接 / 到站检测 / 井道模型） |
+| [`releases/`](releases/) | 预编译发行包：App APK、固件合并镜像（含校验值） |
+| [`tools/`](tools/) | 自检脚本：`preflight.ps1`、`check_links.py` |
+
+> 每个子目录都有独立的 `README.md`，进去就能看到该目录的说明。
 
 > 版本要点见 [`CHANGELOG.md`](CHANGELOG.md)；常见问题见 [`docs/FAQ.md`](docs/FAQ.md)。
 
