@@ -20,9 +20,16 @@
 
 能，两个常量即可：松开 **70°**、按下 **130°**。改完要重新实测行程——墙面按钮的回弹距离不同，角度过大会顶住不放。保持时间（600 ms）同理，按按钮类型微调。
 
-### APK 怎么装？
+### App 怎么装？
 
-用 [`releases/android/elevator-call-v12.apk`](../releases/android/elevator-call-v12.apk) 直接安装，需要允许"安装未知来源应用"。详细步骤见 [`android/安装说明.md`](android/安装说明.md)。
+仓库只收源码，不提供预编译安装包。自己构建一次即可：
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+产物在 `app/build/outputs/apk/debug/app-debug.apk`，传到手机后允许"安装未知来源应用"即可。详见 [`android/安装说明.md`](android/安装说明.md)。
 
 ### 不烧录、只用现成镜像可以吗？
 
