@@ -9,7 +9,7 @@ enum class NodeState { SCANNED, CONNECTING, DISCOVERING, READY, FAILED }
 /**
  * 一台电梯节点（一块 ESP32）在 App 侧的全部状态。
  *
- * RSSI 处理照抄 方案 B 的思路：先取中位数去毛刺，再做指数平滑。
+ * RSSI 处理流程：先取中位数去毛刺，再做指数平滑。
  * 原始 RSSI 抖动极大（同一点位能差 15dBm），直接用会在两层之间乱跳。
  */
 class ElevatorDevice(val address: String) {
