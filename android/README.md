@@ -11,7 +11,7 @@ cd android
 
 Windows 下用 `gradlew.bat`。工程不含 `local.properties`、`build/`、`.gradle/`，这些由工具链自动生成。
 
-已发布的安装包见 [`../releases/android/`](../releases/android/)，安装步骤见 [`../docs/android/安装说明.md`](../docs/android/安装说明.md)。
+仓库只收源码，不提供预编译安装包；按上面的命令构建后自行安装，步骤见 [`../docs/android/安装说明.md`](../docs/android/安装说明.md)。
 
 ## 目录结构
 
