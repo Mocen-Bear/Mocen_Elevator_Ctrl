@@ -11,7 +11,7 @@
 - 双轿厢 **3D 井道**视图，井道 **B**，楼层 **1F / 2F / 3F**。
 - 轿厢位置来源可切换：画面识别 / 摄像头 / 手动。
 - `LocalApiServer` 提供对外最小 HTTP 接口，便于联调。
-- 安装包：[`releases/android/elevator-call-v12.apk`](releases/android/elevator-call-v12.apk)
+- 构建：`cd android && ./gradlew assembleDebug`（仓库只收源码，不提供预编译安装包）
 
 ## 固件 v8
 

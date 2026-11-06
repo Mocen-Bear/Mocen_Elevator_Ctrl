@@ -1,14 +1,8 @@
 # 发行包（`releases/`）
 
-编译好的产物，**下载即用**，不需要自己构建。
+编译好的固件镜像，**下载即烧**，不需要自己构建。
 
-## App
-
-| 文件 | 大小 | 说明 |
-|---|---|---|
-| [`android/elevator-call-v12.apk`](android/elevator-call-v12.apk) | 5.66 MB | App v12，Android 直接安装 |
-
-安装步骤见 [`../docs/android/安装说明.md`](../docs/android/安装说明.md)。
+> App 不在本目录：仓库只收源码，按 [`../android/README.md`](../android/README.md) 自行构建即可。
 
 ## 固件
 
@@ -24,22 +18,14 @@
 下载后可以先核对，确认文件没有损坏或被替换：
 
 ```
-db33330a11d6c10ab8780509e221b54ad0ce1b57818ff60be18c61c8ff7f0a8f  android/elevator-call-v12.apk
 95436e5483c5851e9be49fda2f0a2f9debd790aafa2fc3435b7e52797525996e  firmware/elevator_1F.merged.bin
 48dcb92ca73f1cb4ca38108c1fe12450028bc7f5ba339718045494d455b1fdc8  firmware/elevator_2F.merged.bin
-```
-
-Windows 下核对：
-
-```powershell
-Get-FileHash .\android\elevator-call-v12.apk -Algorithm SHA256
 ```
 
 或在 Git Bash / Linux 下：
 
 ```bash
 sha256sum -c <(printf '%s\n' \
-  "db33330a11d6c10ab8780509e221b54ad0ce1b57818ff60be18c61c8ff7f0a8f  android/elevator-call-v12.apk" \
   "95436e5483c5851e9be49fda2f0a2f9debd790aafa2fc3435b7e52797525996e  firmware/elevator_1F.merged.bin" \
   "48dcb92ca73f1cb4ca38108c1fe12450028bc7f5ba339718045494d455b1fdc8  firmware/elevator_2F.merged.bin")
 ```
