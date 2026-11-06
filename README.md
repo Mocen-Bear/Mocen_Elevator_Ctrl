@@ -87,9 +87,7 @@ gradle assembleDebug     # 产物 app/build/outputs/apk/debug/app-debug.apk
 | [`docs/IOS_INTEGRATION.md`](docs/IOS_INTEGRATION.md) | iOS 侧接入说明 |
 | [`docs/HANDOVER.md`](docs/HANDOVER.md) | 交接说明 |
 | [`docs/REPORT.md`](docs/REPORT.md) | 项目技术报告 |
-| [`docs/CRITIQUE.md`](docs/CRITIQUE.md) | 设计自评与风险 |
-| [`docs/搁置与待办.md`](docs/搁置与待办.md) | 搁置项与后续待办 |
-| [`docs/演示材料/`](docs/演示材料/) | 现场演示手册、能力与边界、版本信息 |
+| [`docs/演示材料/`](docs/演示材料/) | 演示手册、能力与边界、版本信息 |
 
 ## 说明
 

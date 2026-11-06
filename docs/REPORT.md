@@ -14,16 +14,16 @@
 - [9. 建议的扩展方向（按性价比排序）](#9-建议的扩展方向按性价比排序)
 - [10. 目录结构与构建](#10-目录结构与构建)
 - [11. 验证状态（诚实清单）](#11-验证状态诚实清单)
-- [12. 给审阅 Agent 的问题清单（邀请批判）](#12-给审阅-agent-的问题清单邀请批判)
-- [13. 与其他 Agent 方案（方案 A 的 WiFi 主从）对比 + 精华整合](#13-与其他-agent-方案qoder-的-wifi-主从对比--精华整合)
-- [14. 对同行审阅的回应（v4 修复清单）](#14-对同行审阅的回应v4-修复清单)
+- [12. 设计问题清单（待验证）](#12-设计问题清单待验证)
+- [13. 备选方案对比（WiFi 主从）与取舍](#13-备选方案对比wifi-主从与取舍)
+- [14. 早期反馈的修复清单](#14-早期反馈的修复清单)
 - [附录 A：参数速查](#附录-a参数速查)
 - [附录 B：安全声明](#附录-b安全声明)
 
 
-> 用途：交给其他 agent 审阅并“取精华整合”。
+> 用途：记录设计过程与取舍，便于后续维护与交接。
 > 阅读者假设：具备 Android(Kotlin/Jetpack) 与嵌入式(ESP32/Arduino) 基础，但不了解本项目。
-> 报告编写日期：2026-10-16　版本：**v4（吸收同行审阅后 hardened 版）**
+> 报告编写日期：2026-10-16　版本：**v4（按早期反馈加固后的版本）**
 
 ---
 
@@ -44,7 +44,7 @@
 | v1 | “ESP32+舵机远程控制电梯，写烧录程序+手机 App” | 初版：ESP32 WiFi HTTP + 舵机；App 局域网直连 |
 | v2 | “App 靠近哪个 ESP32 就显示已到几层；ESP32 装电梯外，两块板控两层上下行；要完整 Android 工程” | **架构转向 BLE**：RSSI 测距识别楼层；每层一节点、2 舵机 |
 | v3 | “两块板程序（D13/D12）；App 打开无需多余操作，像这张图；最好语音控制” | 拆成两份固件；UI 重做为深色电梯图；加入持续语音识别；引脚改 D13/D12 |
-| **v4** | “这是他们对你的缺陷指出，你参考后给出最终的程序和 app” | **按 方案 A / 方案 B 两份同行审阅逐条修复**（详见 §14）：非阻塞舵机状态机、判层四道防抖、长连接+订阅回执、写队列、错误码分级、分区/JDK 根治等 |
+| **v4** | “这是他们对你的缺陷指出，你参考后给出最终的程序和 app” | **按 方案 A / 方案 B 两份早期反馈逐条修复**（详见 §14）：非阻塞舵机状态机、判层四道防抖、长连接+订阅回执、写队列、错误码分级、分区/JDK 根治等 |
 
 **关键判断**：用户真实痛点是“**靠近即识别楼层**”，这天然需要“能测距的多设备发现”——BLE 广播 + RSSI 是最贴合的技术，胜过 WiFi/MQTT。（取舍详见 §7）
 
@@ -299,19 +299,19 @@ v6 的角度按《MG90S 舵机电梯按钮装置_STL_8件》的实测几何算�
 
 ```
 elevator-control/
-├── README.md                       # 面向用户的操作说明
+├── README.md                       # 项目总览
 ├── REPORT.md                       # 本报告
-├── CRITIQUE.md                     # 对同行(方案 B/方案 A)源码的审阅批判
 ├── firmware/
-│   ├── elevator_2F/elevator_2F.ino # FLOOR_NAME "2F", D13上行/D12下行
-│   └── elevator_3F/elevator_3F.ino # FLOOR_NAME "3F"
+│   ├── elevator_1F/elevator_1F.ino # FLOOR_NAME "1F", D13上行/D12下行
+│   ├── elevator_2F/elevator_2F.ino # FLOOR_NAME "2F"
+│   └── chime_node/chime_node.ino   # 可选：到站叮声
 └── android/                        # Android Studio 工程 (Kotlin, viewBinding)
     ├── settings/build/build.gradle.kts, gradle.properties
     ├── gradlew, gradlew.bat, gradle/wrapper/*(jar 已补齐)
     └── app/src/main/
         ├── AndroidManifest.xml
         ├── java/com/mocen/elevator/{MainActivity,BleManager,FloorJudge,
-        │        VoiceController,ElevatorView,ElevatorDevice}.kt
+        │        ElevatorView,ElevatorDevice,LocalApiServer}.kt
         └── res/{layout,drawable,values}
 ```
 
@@ -342,7 +342,7 @@ elevator-control/
 
 ---
 
-## 12. 给审阅 Agent 的问题清单（邀请批判）
+## 12. 设计问题清单（待验证）
 
 1. 长连接 vs 短连接，在“演示要快 + 要真 ACK”的场景下，长连接是否已是最优？
 2. 判层四道防抖的默认参数（±8dB / 连胜 3 / 8s 过期）在小场地是否过于保守？
@@ -353,7 +353,7 @@ elevator-control/
 
 ---
 
-## 13. 与其他 Agent 方案（方案 A 的 WiFi 主从）对比 + 精华整合
+## 13. 备选方案对比（WiFi 主从）与取舍
 
 方案 A agent 交付了**另一套完全不同的架构**并实测编译通过：**WiFi 主从代理**
 （`board_f1` 开热点 AP=192.168.4.1，`board_f2` 静态 STA=192.168.4.2；App 连一个
@@ -371,7 +371,7 @@ elevator-control/
 | 延迟 | 长连接后 ~几十 ms | 局域网 HTTP，约几十 ms |
 | 舵机驱动 | 原生 LEDC（采纳自 方案 A） | 原生 LEDC |
 | 编译产物体积 | App 5.61MB（Material/Kotlin） | App ~16KB（纯 Java/系统主题） |
-| 已验证程度 | 固件+App 编译通过 | 固件+App 编译通过（但其固件状态机有死锁，见 `CRITIQUE.md`） |
+| 已验证程度 | 固件+App 编译通过 | 固件+App 编译通过 |
 
 ### 13.2 已采纳的“精华”
 
@@ -390,7 +390,7 @@ elevator-control/
 
 ---
 
-## 14. 对同行审阅的回应（v4 修复清单）
+## 14. 早期反馈的修复清单
 
 > 依据：方案 A 的《批判报告》与 方案 B 的《REVIEW_OF_PEER_CODE》，两者均针对本项目
 > v3 的**源码**逐条举证。下面按“他们指出 → 我们的处置”列出，全部已落到 v4 代码。
@@ -453,7 +453,7 @@ elevator-control/
 | 3.6.12 | `xQueueSend` 返回值被忽略 | 检查并回执 `ERR:QUEUE_FULL` |
 
 > 方案 B 同时**确认我们的固件“舵机会动”**（vs 方案 A 固件状态机死锁）——这一点在 v4 里进一步保持并强化（状态机 + 真回执）。
-> 注：方案 B 自己也承认“从未在真机跑过”，且其缺陷指认里有“曾据此判分”的部分（见 `CRITIQUE.md`），故我们只吸收其**可验证的技术点**，不采纳其工程流程结论。
+> 注：方案 B 自己也承认“从未在真机跑过”，故我们只吸收其**可验证的技术点**，不采纳其工程流程结论。
 
 ---
 
