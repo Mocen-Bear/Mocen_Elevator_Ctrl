@@ -134,7 +134,7 @@
 
 ## 5. ESP32 固件设计
 
-文件：`firmware/elevator_2F/elevator_2F.ino`、`firmware/elevator_3F/elevator_3F.ino`
+文件：`firmware/elevator_1F/elevator_1F.ino`、`firmware/elevator_2F/elevator_2F.ino`
 （两份代码仅 3 行不同（横幅 / 楼层行 / `FLOOR_NAME`）——刻意做成两份独立 sketch，方便用户“一块板一个文件”直接打开烧录）
 
 ### 5.1 关键设计点
@@ -410,7 +410,7 @@ elevator-control/
 > **v5 演示场景调整**：井道改为 **1F–4F 四层**，但**呼梯装置只装在 2F 与 3F**。
 > 原因：真实楼里 1F（底层）只有“上行”、4F（顶层）只有“下行”，**只有中间层同时有上行+下行**，
 > 才能把“上行 / 下行”两种呼梯都演示出来。因此两块固件为
-> `firmware/elevator_2F/elevator_2F.ino` 与 `firmware/elevator_3F/elevator_3F.ino`；
+> `firmware/elevator_1F/elevator_1F.ino` 与 `firmware/elevator_2F/elevator_2F.ino`；
 > App 侧把楼层拆成 `shaftFloors = 1F~4F`（3D 井道展示）与 `deviceFloors = 2F/3F`（可呼叫）。
 
 ### 14.1 方案 A 提出的缺陷

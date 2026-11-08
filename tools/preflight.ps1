@@ -175,8 +175,8 @@ if (-not (Test-Path -LiteralPath $apk)) {
 Head "5) Firmware constants (floor name / pins / timing)"
 $fw = Join-Path $root 'firmware'
 $expect = @(
-  @{ Name = 'elevator_2F'; Floor = '2F' },
-  @{ Name = 'elevator_3F'; Floor = '3F' }
+  @{ Name = 'elevator_1F'; Floor = '1F' },
+  @{ Name = 'elevator_2F'; Floor = '2F' }
 )
 foreach ($e in $expect) {
   $ino = Join-Path $fw ($e.Name + '\' + $e.Name + '.ino')
@@ -259,7 +259,7 @@ if ($Compile) {
   if (-not (Test-Path -LiteralPath $cli)) {
     Wrn "arduino-cli not found at $cli - skipped"
   } else {
-    foreach ($sk in @('elevator_2F', 'elevator_3F', 'chime_node')) {
+    foreach ($sk in @('elevator_1F', 'elevator_2F', 'chime_node')) {
       $dir = Join-Path $fw $sk
       if (-not (Test-Path -LiteralPath $dir)) { Wrn ("firmware\$sk missing - skipped"); continue }
       $out = & $cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app $dir 2>&1
