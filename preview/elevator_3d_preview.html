@@ -15,7 +15,7 @@
 <body>
 <div id="wrap">
   <canvas id="c"></canvas>
-  <div class="hint">拖动旋转（不再自动旋转）· 只看清 2F/3F，1F/4F 半截暗影 · 轿厢每 2.4 秒升降演示“靠近某层→移到该层”，到站自动开门</div>
+  <div class="hint">拖动旋转（不再自动旋转）· 只看清 1F/2F，B/3F 半截暗影 · 轿厢每 2.4 秒升降演示“靠近某层→移到该层”，到站自动开门</div>
 </div>
 <script>
 // ===== 与 ElevatorView.kt 完全一致的常量 =====
@@ -24,7 +24,7 @@ const pitDepth=0.45, headroom=1.00, slabBorder=0.11;
 const DIST=9.0, NEAR=0.15, AUTO_SPIN=0.30;
 const L=[0.40,0.80,0.45];
 
-const floors=["1F","2F","3F","4F"];
+const floors=["B","1F","2F","3F"];
 const slabY=i=>i*floorGap;
 const carCenterY=i=>slabY(i)+carHalfH+carClear;
 const doorH=()=>carHalfH*2-0.18;
@@ -32,7 +32,7 @@ const doorH=()=>carHalfH*2-0.18;
 let shaftBottom=slabY(0)-pitDepth;
 let shaftTop=carCenterY(floors.length-1)+carHalfH+headroom;
 
-// 视野窗口：2F / 3F 做完整，1F / 4F 只露一小截并做“暗影”
+// 视野窗口：1F / 2F 做完整，B / 3F 只露一小截并做“暗影”
 const viewBottom=slabY(1)-1.00, viewTop=slabY(3)+0.80;
 const viewCenterY=(viewBottom+viewTop)/2, viewHeight=viewTop-viewBottom;
 const bandBottom=slabY(1), bandTop=slabY(3);
@@ -258,7 +258,7 @@ function draw(){
       for(let i=1;i<f.pts.length;i++) ctx.lineTo(f.pts[i][0],f.pts[i][1]);
       ctx.closePath(); ctx.fill(); }
   }
-  // 上下渐隐：让 1F / 4F 的半截融进黑暗里
+  // 上下渐隐：让 B / 3F 的半截融进黑暗里
   const g=ctx.createLinearGradient(0,0,0,cv.height*0.22);
   g.addColorStop(0,'rgba(3,7,12,0.82)'); g.addColorStop(1,'rgba(3,7,12,0)');
   ctx.fillStyle=g; ctx.fillRect(0,0,cv.width,cv.height*0.22);

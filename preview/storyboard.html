@@ -168,11 +168,11 @@
         <i id="lamp-up"></i><i id="lamp-dn"></i>
       </div>
       <div class="servo" id="servo"></div>
-      <div class="fbtn" id="fbtn"><span id="fbtnf">2F</span><small>▲ 上行</small><span class="ring"></span></div>
+      <div class="fbtn" id="fbtn"><span id="fbtnf">1F</span><small>▲ 上行</small><span class="ring"></span></div>
       <div class="fdist" id="fdist"></div>
       <div class="hud">
         <div>
-          <div id="dev">ELEV-2F <span style="opacity:.6">· 未连接</span></div>
+          <div id="dev">ELEV-1F <span style="opacity:.6">· 未连接</span></div>
           <div class="sig"><i class="a" style="height:4px"></i><i class="a" style="height:7px"></i><i class="a" style="height:10px"></i><i style="height:12px"></i></div>
           <div class="lat" id="rssi">— dBm</div>
         </div>
@@ -191,13 +191,13 @@
     <div class="shaftbox">
       <canvas id="shaft"></canvas>
       <div class="shafthud">
-        <div><b style="color:#C6DCF0;font-size:12.5px">ELEV SHAFT · 1F–4F</b></div>
+        <div><b style="color:#C6DCF0;font-size:12.5px">ELEV SHAFT · B–3F</b></div>
         <div class="r"><span>轿厢位置来源</span><span class="srcpill sim" id="srcpill">模拟</span></div>
-        <div class="r" style="opacity:.8" id="carline">轿厢:4F</div>
+        <div class="r" style="opacity:.8" id="carline">轿厢:3F</div>
       </div>
       <div class="legend">
-        <div>装置只装在 <b>2F / 3F</b>（可呼）</div>
-        <div>1F / 4F 为虚影（不可呼）</div>
+        <div>装置只装在 <b>1F / 2F</b>（可呼）</div>
+        <div>B / 3F 为虚影（不可呼）</div>
       </div>
     </div>
   </div>
@@ -221,7 +221,7 @@
   <b>这个页面是什么：</b>把产品故事压成 30 秒连续演出，可全屏放映 / 录成演示视频。所有几何与配色和安卓 App、<code>SHAFT_MODEL.md</code> 完全一致
   （<code>slabY(i)=i*2.60</code>、轿厢 1.32×1.32×2.10、门缝暖光 <code>#F0C070</code>、按钮灯 <code>#7CE0A0</code>）。
   <br>
-  <b>诚实标注：</b>"轿厢位置来源"在演出中从 <b>模拟</b> 切到 <b>摄像头读到 2F</b>——这正是我们最想讲清的一点：
+  <b>诚实标注：</b>"轿厢位置来源"在演出中从 <b>模拟</b> 切到 <b>摄像头读到 1F</b>——这正是我们最想讲清的一点：
   <b>呼梯是真的，位置在没装传感器前是推测的，推测就标出来。</b>
 </div>
 
@@ -234,49 +234,49 @@ const SEG = [
     rssi:[-86,-74], btn:0, dev:'未连接', press:0, lampU:0, lampD:0, door:0,
     carF:3.0, src:'sim', toast:'', multi:0, wave:1, trk:'walk' },
 
-  { a:3.2,  b:6.0,  capT:'② 靠近 2F 的装置 · RSSI 爬升 → 悬浮按钮浮出',
+  { a:3.2,  b:6.0,  capT:'② 靠近 1F 的装置 · RSSI 爬升 → 悬浮按钮浮出',
     capD:'只用 BLE 信号强度定"你在哪一层、离井道多近"，不做连接、不做配对。判定是瞬时(最快 40 ms，最坏 200 ms 心跳)。',
-    rssi:[-74,-56], btn:[0,1], dev:'已进入 2F', press:0, lampU:0, lampD:0, door:0,
+    rssi:[-74,-56], btn:[0,1], dev:'已进入 1F', press:0, lampU:0, lampD:0, door:0,
     carF:3.0, src:'sim', toast:'', multi:0, wave:1, trk:'near' },
 
-  { a:6.0,  b:6.7,  capT:'③ 手指点一下 → 直接按下 2F 上行',
+  { a:6.0,  b:6.7,  capT:'③ 手指点一下 → 直接按下 1F 上行',
     capD:'点按 = 立刻发 BLE 指令。不用掏卡、不用碰公共按钮(这在疫情后是真需求)。',
-    rssi:-56, btn:1, dev:'已进入 2F', press:[0,1], lampU:0, lampD:0, door:0,
+    rssi:-56, btn:1, dev:'已进入 1F', press:[0,1], lampU:0, lampD:0, door:0,
     carF:3.0, src:'sim', toast:'cmd', multi:0, wave:0, trk:'press' },
 
   { a:6.7,  b:8.6,  capT:'④ 舵机真的把按钮按下去了',
     capD:'ESP32 收到 UP → 舵机推程 350 ms → 保持 600 ms → 收回。墙上那盏呼梯灯亮起(#7CE0A0)。',
-    rssi:-56, btn:1, dev:'已连 2F · 上行', press:1, lampU:[0,1], lampD:0, door:0,
+    rssi:-56, btn:1, dev:'已连 1F · 上行', press:1, lampU:[0,1], lampD:0, door:0,
     carF:3.0, src:'sim', toast:'ack', multi:0, wave:0, trk:'press' },
 
-  { a:8.6,  b:11.4, capT:'⑤ BLE 回执 2F|OK:UP —— 这是"真数据"',
-    capD:'注意:回执的含义是"舵机动作完成"，不是"轿厢动了"。井道里 2F 那一层因此亮起。',
-    rssi:-56, btn:1, dev:'已连 2F · 上行', press:0, lampU:1, lampD:0, door:0,
+  { a:8.6,  b:11.4, capT:'⑤ BLE 回执 1F|OK:UP —— 这是"真数据"',
+    capD:'注意:回执的含义是"舵机动作完成"，不是"轿厢动了"。井道里 1F 那一层因此亮起。',
+    rssi:-56, btn:1, dev:'已连 1F · 上行', press:0, lampU:1, lampD:0, door:0,
     carF:[3.0,2.0], src:'sim', toast:'', multi:0, wave:0, trk:'near' },
 
-  { a:11.4, b:15.6, capT:'⑥ 轿厢从 4F 下来（位置：模拟 / 摄像头）',
+  { a:11.4, b:15.6, capT:'⑥ 轿厢从 3F 下来（位置：模拟 / 摄像头）',
     capD:'轿厢位置我们没有传感器：要么按经验模拟(必须标"模拟")，要么用摄像头读电梯自带的楼层显示(真数据)。',
-    rssi:-56, btn:1, dev:'已连 2F · 上行', press:0, lampU:1, lampD:0, door:0,
+    rssi:-56, btn:1, dev:'已连 1F · 上行', press:0, lampU:1, lampD:0, door:0,
     carF:[2.0,1.0], src:'real', toast:'', multi:0, wave:0, trk:'near' },
 
   { a:15.6, b:18.4, capT:'⑦ 到站 · 门开',
-    capD:'摄像头读到显示跳到 2F → 校正轿厢位置 → 门开。灯灭 = 呼梯被应答了。',
-    rssi:-56, btn:0, dev:'已连 2F', press:0, lampU:[1,0], lampD:0, door:[0,1],
+    capD:'摄像头读到显示跳到 1F → 校正轿厢位置 → 门开。灯灭 = 呼梯被应答了。',
+    rssi:-56, btn:0, dev:'已连 1F', press:0, lampU:[1,0], lampD:0, door:[0,1],
     carF:1.0, src:'real', toast:'', multi:0, wave:0, trk:'inside' },
 
-  { a:18.4, b:21.4, capT:'⑧ 再点一次：你在 2F、要去 1F → 按 2F 下行',
+  { a:18.4, b:21.4, capT:'⑧ 再点一次：你在 1F、要去 B → 按 1F 下行',
     capD:'呼的永远是「你所在那一层」的按钮,目的地只决定按上还是按下。同一套逻辑:悬浮钮、大屏 ▲▼、走接口,结果一样。',
-    rssi:-56, btn:0, dev:'已连 2F', press:[0,1], lampU:[1,0], lampD:[0,1], door:0,
+    rssi:-56, btn:0, dev:'已连 1F', press:[0,1], lampU:[1,0], lampD:[0,1], door:0,
     carF:1.0, src:'real', toast:'down', multi:0, wave:0, trk:'press' },
 
   { a:21.4, b:24.2, capT:'⑨ 两台手机同时用 · 广播回执',
-    capD:'一块 ESP32 最多同时服务 3 台手机:回执用 notify 广播,谁都能看到"这台电梯在动";2F/3F 两个装置同一套协议。',
-    rssi:-56, btn:0, dev:'已连 2F', press:0, lampU:1, lampD:0, lamp3:[0,1], door:0,
+    capD:'一块 ESP32 最多同时服务 3 台手机:回执用 notify 广播,谁都能看到"这台电梯在动";1F/2F 两个装置同一套协议。',
+    rssi:-56, btn:0, dev:'已连 1F', press:0, lampU:1, lampD:0, lamp3:[0,1], door:0,
     carF:1.0, src:'real', toast:'multi', multi:1, wave:0, trk:'near' },
 
   { a:24.2, b:30.0, capT:'⑩ 抬头看:井道透视就叠在真实走廊上',
     capD:'半透明 + 发光线框,不需要任何遮挡技术(ARKit 默认没有遮挡)。井道"长"在电梯厅的真实位置,零手工调角可选 RSSI 反推。',
-    rssi:-56, btn:0, dev:'已连 2F', press:0, lampU:1, lampD:0, lamp3:1, door:0,
+    rssi:-56, btn:0, dev:'已连 1F', press:0, lampU:1, lampD:0, lamp3:1, door:0,
     carF:1.0, src:'real', toast:'', multi:2, wave:0, trk:'near' },
 ];
 const T_END = 30.0;
@@ -364,7 +364,7 @@ function project(x,y,z){
   const s   = focal*DIST/d;
   return { x: SW/2 + rx*s, y: SHH/2 - ry*s, d:rz };
 }
-// 带虚影衰减:y 落在 2F~3F 之外 → 变暗变透
+// 带虚影衰减:y 落在 1F~2F 之外 → 变暗变透
 function dimAt(y){
   const inBand = (y>=SH.slabY(1) && y<=SH.slabY(3));
   return inBand? {a:1, k:1} : {a:0.26, k:0.62};
@@ -541,7 +541,7 @@ function drawShaft(st){
     sx.fillStyle=fog('#C6DCF0', T.alpha, T.p[1]);
     sx.fillText(T.txt, p.x, p.y); sx.shadowBlur=0;
   }
-  // 上下渐隐(窗口:2F/3F 完整,1F/4F 融进黑暗)
+  // 上下渐隐(窗口:1F/2F 完整,B/3F 融进黑暗)
   const fh=SHH*0.22;
   let gt=sx.createLinearGradient(0,0,0,fh);
   gt.addColorStop(0,'rgba(3,7,12,.86)'); gt.addColorStop(1,'rgba(3,7,12,0)');
@@ -580,7 +580,7 @@ function applyState(st, t){
   $('capT').textContent = st.capT;
   $('capD').textContent = st.capD;
   $('rssi').textContent = st.rssi+' dBm';
-  $('dev').innerHTML = 'ELEV-2F <span style="opacity:.6">· '+st.dev+'</span>';
+  $('dev').innerHTML = 'ELEV-1F <span style="opacity:.6">· '+st.dev+'</span>';
   const bars = document.querySelectorAll('.sig i');
   const lvl = Math.max(0, Math.min(4, Math.round((st.rssi+90)/9)));
   bars.forEach((b,i)=> b.classList.toggle('a', i<lvl));
@@ -621,9 +621,9 @@ function fire(k){
   const el=$('toast');
   const map={
     cmd:  '<span class="k">→</span> 发出 <span class="k">UP</span>（BLE CMD 0000ffe1）',
-    ack:  '<span class="k">←</span> 收到回执 <span class="k">2F|OK:UP</span>（STATUS 0000ffe2）',
-    open: '<span class="k">◉</span> 摄像头读到显示跳到 <span class="k">2F</span> → 校正轿厢位置',
-    down: '<span class="k">→</span> 发出 <span class="k">DOWN</span>（BLE CMD 0000ffe1）· 按的是 2F 下行',
+    ack:  '<span class="k">←</span> 收到回执 <span class="k">1F|OK:UP</span>（STATUS 0000ffe2）',
+    open: '<span class="k">◉</span> 摄像头读到显示跳到 <span class="k">1F</span> → 校正轿厢位置',
+    down: '<span class="k">→</span> 发出 <span class="k">DOWN</span>（BLE CMD 0000ffe1）· 按的是 1F 下行',
     multi:'<span class="k">📡</span> 回执广播给 2 台手机（notify）',
     pickup:'<span class="k">★</span> 呼之即来 · 不用碰任何公共按钮',
   };

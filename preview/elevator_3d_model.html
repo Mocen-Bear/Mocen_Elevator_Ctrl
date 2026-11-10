@@ -99,7 +99,7 @@
 <div id="main">
   <div id="stage">
     <canvas id="c"></canvas>
-    <div id="cap">拖动旋转（默认不自动转）· 只有 <b>2F / 3F</b> 画全，1F / 4F 是半透明虚影 · 轿厢到站自动开门</div>
+    <div id="cap">拖动旋转（默认不自动转）· 只有 <b>1F / 2F</b> 画全，B / 3F 是半透明虚影 · 轿厢到站自动开门</div>
   </div>
 
   <div id="panel">
@@ -107,8 +107,8 @@
     <div class="card">
       <h2>你站在哪一层（蓝牙测距 · 与 App 同一套判层规则）</h2>
       <div id="nodes"></div>
-      <div id="walk"><span>走廊位置</span><input id="pos" type="range" min="0" max="1" step="0.005" value="0.34"><span id="poslab">2F 门口</span></div>
-      <div id="who">判定楼层：<b id="whoFloor">2F</b> <span style="color:#6F8AA6">（当前 = 蓝牙判层，不是摄像头/不是瞎猜）</span></div>
+      <div id="walk"><span>走廊位置</span><input id="pos" type="range" min="0" max="1" step="0.005" value="0.34"><span id="poslab">1F 门口</span></div>
+      <div id="who">判定楼层：<b id="whoFloor">1F</b> <span style="color:#6F8AA6">（当前 = 蓝牙判层，不是摄像头/不是瞎猜）</span></div>
     </div>
 
     <div class="card">
@@ -165,7 +165,7 @@ const pitDepth=0.45, headroom=1.00, slabBorder=0.11;
 const DIST=9.0, NEAR=0.15, AUTO_SPIN=0.30;
 const L=[0.40,0.80,0.45];
 
-const floors=["1F","2F","3F","4F"];
+const floors=["B","1F","2F","3F"];
 const slabY=i=>i*floorGap;
 const carCenterY=i=>slabY(i)+carHalfH+carClear;
 const doorH=()=>carHalfH*2-0.18;
@@ -566,10 +566,10 @@ function drawMech(deg){
 /* =========================================================================
    第三部分：楼层判定仿真（与 App 同一套：中位窗口 3 · EMA 0.62 · 滞后 3dB · 连赢 1）
    ========================================================================= */
-const NODES=[{name:"ELEV-2F",floor:"2F",idx:1,p:0.34},
-             {name:"ELEV-3F",floor:"3F",idx:2,p:0.66}];
+const NODES=[{name:"ELEV-1F",floor:"1F",idx:1,p:0.34},
+             {name:"ELEV-2F",floor:"2F",idx:2,p:0.66}];
 const RSSI_WINDOW=3, EMA_ALPHA=0.62, MIN_LEAD_DB=3, MIN_RSSI=-95;
-let windows={}, emas={}, judgedFloor="2F";
+let windows={}, emas={}, judgedFloor="1F";
 
 function rssiRaw(p,node){
   const d=Math.abs(p-node.p);
@@ -622,7 +622,7 @@ function renderNodes(vals){
   document.getElementById('whoFloor').textContent=judgedFloor;
   const pl=document.getElementById('poslab');
   const pp=parseFloat(pos.value);
-  pl.textContent = pp<0.25?"1F 方向":(pp<0.5?"2F 门口":(pp<0.75?"3F 门口":"4F 方向"));
+  pl.textContent = pp<0.25?"B 方向":(pp<0.5?"1F 门口":(pp<0.75?"2F 门口":"3F 方向"));
 }
 
 /* =========================================================================
@@ -670,12 +670,12 @@ async function servoPress(floor,dir){
 async function doCall(dir, opts){
   if(busy) return;
   const floor=judgedFloor;
-  if(floor!=="2F" && floor!=="3F"){
-    log(`× 拒绝：${floor} 没有呼梯装置（只有 2F/3F 装了）`,'l-bad');
+  if(floor!=="1F" && floor!=="2F"){
+    log(`× 拒绝：${floor} 没有呼梯装置（只有 1F/2F 装了）`,'l-bad');
     return;
   }
-  const node = floor==="2F" ? "ELEV-2F" : "ELEV-3F";
-  const idx = floor==="2F" ? 1 : 2;
+  const node = floor==="1F" ? "ELEV-1F" : "ELEV-2F";
+  const idx = floor==="1F" ? 1 : 2;
   const btn = dir==="UP" ? "▲ 上行" : "▼ 下行";
   const cmd = dir==="UP" ? "UP" : "DOWN";
   busy=true;
@@ -731,10 +731,10 @@ pos.addEventListener('input',()=>{ judgeTick(); });
 const floorBox=el('floors');
 floors.forEach((f,i)=>{
   const b=document.createElement('div');
-  b.className='fl'+(f==='2F'||f==='3F'?'':' no');
+  b.className='fl'+(f==='1F'||f==='2F'?'':' no');
   b.textContent=f; b.dataset.i=i;
   b.onclick=()=>{
-    if(f!=='2F'&&f!=='3F'){ log(`× ${f} 没有装置，手动选了也会被拒绝`,'l-bad'); return; }
+    if(f!=='1F'&&f!=='2F'){ log(`× ${f} 没有装置，手动选了也会被拒绝`,'l-bad'); return; }
     carTargetY=carCenterY(i); carIndex=i; log(`→ 手动看 ${f} 的轿厢（只是看，不是呼梯）`,'l-dim');
   };
   floorBox.appendChild(b);
@@ -766,8 +766,8 @@ async function autoLoop(){
   await doCall('UP',{fast:true});
   if(!autoOn) return;
   await sleep(700);
-  // 走进电梯、坐到 3F（这里演"人挪位，判定跟着变"）
-  log('→ （演示）人往 3F 方向走，蓝牙判定跟着变…','l-dim');
+  // 走进电梯、坐到 2F（这里演"人挪位，判定跟着变"）
+  log('→ （演示）人往 2F 方向走，蓝牙判定跟着变…','l-dim');
   const t0=performance.now();
   const from=parseFloat(pos.value), to=0.70;
   while(autoOn && performance.now()-t0<2200){
@@ -808,8 +808,8 @@ if(apiBase){
       const r=await fetch(apiBase.replace(/\/$/,'')+'/api/status',{cache:'no-store'});
       const j=await r.json();
       setBadge('real','接口 '+apiBase+(j.carSource?('（'+j.carSource+'）'):''));
-      if(j.near && (j.near==='2F'||j.near==='3F')) judgedFloor=j.near;
-      if(j.car && j.car!=='1F'&&j.car!=='4F'){
+      if(j.near && (j.near==='1F'||j.near==='2F')) judgedFloor=j.near;
+      if(j.car && j.car!=='B'&&j.car!=='3F'){
         const i=floors.indexOf(j.car);
         if(i>=0 && !busy){ carTargetY=carCenterY(i); carIndex=i; }
       }

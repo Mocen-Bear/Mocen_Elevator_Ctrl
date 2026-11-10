@@ -71,9 +71,9 @@
     </div>
     <h3 style="margin-top:14px">② 对照实验</h3>
     <div class="row" style="flex-wrap:wrap">
-      <button class="primary" id="b-still">站在 2F 静止 20 s</button>
+      <button class="primary" id="b-still">站在 1F 静止 20 s</button>
       <button class="primary" id="b-mid">站在两层正中间 20 s</button>
-      <button class="primary" id="b-walk">从 2F 走到 3F</button>
+      <button class="primary" id="b-walk">从 1F 走到 2F</button>
     </div>
     <div class="row" style="margin-top:8px;flex-wrap:wrap">
       <button id="b-recommend">套用推荐现场设置并重跑</button>
@@ -91,8 +91,8 @@
         <canvas id="chart" width="560" height="180" style="width:100%"></canvas>
         <canvas id="strip" width="560" height="46" style="width:100%;margin-top:8px"></canvas>
         <div class="legend">
-          <span><i class="dot" style="background:#2ecbff"></i>ELEV-2F</span>
-          <span><i class="dot" style="background:#F0C070"></i>ELEV-3F</span>
+          <span><i class="dot" style="background:#2ecbff"></i>ELEV-1F</span>
+          <span><i class="dot" style="background:#F0C070"></i>ELEV-2F</span>
           <span><i class="dot" style="background:#7CE0A0"></i>判定楼层</span>
         </div>
       </div>
@@ -111,8 +111,8 @@
     <div class="dim" style="font-size:12px;margin-top:6px">滤波后强度(EMA)</div>
     <div id="now-rssi" style="font-size:14px"></div>
     <div class="kv">
-      <span class="dim">我离 2F 装置</span><b id="k-d2">—</b>
-      <span class="dim">我离 3F 装置</span><b id="k-d3">—</b>
+      <span class="dim">我离 1F 装置</span><b id="k-d2">—</b>
+      <span class="dim">我离 2F 装置</span><b id="k-d3">—</b>
       <span class="dim">领先优势</span><b id="k-lead">—</b>
       <span class="dim">处于死区</span><b id="k-dead">—</b>
     </div>
@@ -165,8 +165,8 @@ const CFG = {
   devLat: 0.30,
 };
 
-/* 装置（只有 2F / 3F 有） */
-const DEVICES = [ {floor:1, name:'2F', color:'#2ecbff'}, {floor:2, name:'3F', color:'#F0C070'} ];
+/* 装置（只有 1F / 2F 有） */
+const DEVICES = [ {floor:1, name:'1F', color:'#2ecbff'}, {floor:2, name:'2F', color:'#F0C070'} ];
 
 /* =====================================================================
    2) 仿真核心：和 Kotlin 逐行对应
@@ -240,7 +240,7 @@ function simulate(tSec, floorAt, seed){
   const n = Math.round(tSec*1000/CFG.tickMs);
   for(let i=0;i<n;i++){
     const t = i*CFG.tickMs/1000;
-    const myF = floorAt(t);                    // 楼层单位(1.0 = 2F)
+    const myF = floorAt(t);                    // 楼层单位(1.0 = 1F)
     const r = rssiAt(myF * CFG.floorGapM, rnd); // ★ 换算成米再算距离
     for(const d of devs) pushRssi(d, r[d.name]);
     const ch = judgeUpdate(J, devs);
@@ -291,7 +291,7 @@ const stripCv=document.getElementById('strip'), stx=stripCv.getContext('2d');
 function drawTrack(){
   const W=trackCv.width,H=trackCv.height;
   tx.clearRect(0,0,W,H); tx.fillStyle='#05090f'; tx.fillRect(0,0,W,H);
-  const top=28, bot=H-28, span=bot-top;               // 4F..1F
+  const top=28, bot=H-28, span=bot-top;               // 3F..B
   const yOf = fl => bot - (fl/3)*span;                 // floor 0..3 -> y
   // 楼层线
   for(let i=0;i<4;i++){
@@ -318,7 +318,7 @@ function drawTrack(){
   const y = bot - (myF/3)*span;
   // 判定楼层高亮带
   if(live && live.J.floor){
-    const fi = { '2F':1, '3F':2 }[live.J.floor];
+    const fi = { '1F':1, '2F':2 }[live.J.floor];
     if(fi!==undefined){ const yy=yOf(fi);
       tx.fillStyle='rgba(124,224,160,.10)'; tx.fillRect(34, yy-14, W-48, 28);
       tx.strokeStyle='rgba(124,224,160,.5)'; tx.lineWidth=1; tx.strokeRect(34, yy-14, W-48, 28); }
@@ -361,10 +361,10 @@ function drawStrip(){
   const h = live? live.hist : [];
   const n = Math.max(1,h.length), cw=(W-36)/n;
   stx.fillStyle='#5f7288'; stx.font='10px sans-serif'; stx.textAlign='left';
-  stx.fillText('判定时间轴（绿=2F 橙=3F 灰=无）', 30, 12);
+  stx.fillText('判定时间轴（绿=1F 橙=2F 灰=无）', 30, 12);
   h.forEach((p,i)=>{
     const x=30+i*cw;
-    stx.fillStyle = p.floor==='2F'? '#7CE0A0' : p.floor==='3F'? '#F0C070' : '#2a3d52';
+    stx.fillStyle = p.floor==='1F'? '#7CE0A0' : p.floor==='2F'? '#F0C070' : '#2a3d52';
     stx.fillRect(x, 20, Math.max(1,cw-1), 18);
   });
 }
@@ -377,8 +377,8 @@ function updateReadout(){
   const d2=live.devs[0], d3=live.devs[1];
   $('#now-floor').textContent = live.J.floor || '—';
   $('#now-floor').className = 'big ' + (live.J.floor? 'ok':'dim');
-  $('#now-rssi').innerHTML = `ELEV-2F <b style="color:#2ecbff">${d2.filtered.toFixed(1)}</b> dBm &nbsp; `+
-                             `ELEV-3F <b style="color:#F0C070">${d3.filtered.toFixed(1)}</b> dBm`;
+  $('#now-rssi').innerHTML = `ELEV-1F <b style="color:#2ecbff">${d2.filtered.toFixed(1)}</b> dBm &nbsp; `+
+                             `ELEV-2F <b style="color:#F0C070">${d3.filtered.toFixed(1)}</b> dBm`;
   const myF = live.myFloorM/CFG.floorGapM;
   const dist = fl => Math.hypot(myF*CFG.floorGapM - fl*CFG.floorGapM, CFG.lateralM-CFG.devLat);
   $('#k-d2').textContent = dist(1).toFixed(2)+' m';
@@ -422,7 +422,7 @@ document.getElementById('b-reset').onclick=()=>{
    7) 对照实验（每个场景跑 6 个固定种子取平均 → 结果可复现）
    ===================================================================== */
 const SEEDS = [3,7,11,13,17,23];
-const WALK_F = t => t<3? 1.0 : (t<6? 1.0+(t-3)/3 : 2.0);   // 前 3 s 站 2F，3 s 走到 3F，再站 4 s
+const WALK_F = t => t<3? 1.0 : (t<6? 1.0+(t-3)/3 : 2.0);   // 前 3 s 站 1F，3 s 走到 2F，再站 4 s
 
 /* 跑一个场景，返回多种子平均 */
 function runAvg(tSec, floorAt){
@@ -432,9 +432,9 @@ function runAvg(tSec, floorAt){
     n++;
     ours  += r.changes.length;
     naive += r.naiveChanges.length;
-    const a = r.changes.find(c=>c.floor==='3F');
+    const a = r.changes.find(c=>c.floor==='2F');
     if(a && a.t>=3) oLat.push((a.t-3)*1000);
-    const b = r.naiveChanges.find(c=>c.floor==='3F' && c.t>=3);
+    const b = r.naiveChanges.find(c=>c.floor==='2F' && c.t>=3);
     if(b) nLat.push((b.t-3)*1000);
   }
   const avg = a => a.length? Math.round(a.reduce((x,y)=>x+y,0)/a.length) : null;
@@ -453,15 +453,15 @@ function addRow(name, ours, naive, latency, verdict){
 const setVerdict = h => { document.getElementById('verdict').innerHTML = h; };
 
 document.getElementById('b-still').onclick=()=>{
-  const r = runAvg(20, ()=>1.0);                       // 站在 2F 装置正前
-  addRow('站在 2F 静止 20 s', r.ours, r.naive, '第 1 个采样周期 (200 ms)',
+  const r = runAvg(20, ()=>1.0);                       // 站在 1F 装置正前
+  addRow('站在 1F 静止 20 s', r.ours, r.naive, '第 1 个采样周期 (200 ms)',
     r.ours<=1.2? '<span class="ok">静止不抖</span>（只有首次上线的 1 次）'
                : '有点抖 → 加大 minLeadDb');
   setVerdict(`<b>结论：</b>站在某一层装置边上时，我们的算法和朴素做法都<b>不会抖</b>（20 s 内只有首次上线那 1 次判定）。\n   首判耗时 = 一个采样周期 = <b>200 ms</b>，所以\"靠近就出楼层\"是<b>瞬时</b>的。`);
 };
 
 document.getElementById('b-mid').onclick=()=>{
-  const r = runAvg(20, ()=>1.5);                       // 2F/3F 正中间
+  const r = runAvg(20, ()=>1.5);                       // 1F/2F 正中间
   const ratio = r.ours>0? (r.naive/r.ours).toFixed(1) : '∞';
   addRow('站在两层正中间 20 s（最坏位置）', r.ours, r.naive, '—',
     r.naive>r.ours*1.5 ? `<span class="ok">滞后把横跳压下 ${ratio}×</span>` : '两层强度确实接近');
@@ -471,7 +471,7 @@ document.getElementById('b-mid').onclick=()=>{
 document.getElementById('b-walk').onclick=()=>{
   const r = runAvg(10, WALK_F);
   const latTxt = r.oLat!==null? `我们 ${r.oLat} ms<br>朴素 ${r.nLat} ms` : '未判出';
-  addRow('从 2F 走到 3F（3 s 走完）', Math.max(0,r.ours-1), Math.max(0,r.naive-1), latTxt,
+  addRow('从 1F 走到 2F（3 s 走完）', Math.max(0,r.ours-1), Math.max(0,r.naive-1), latTxt,
     r.oLat!==null && r.oLat<=2600? '换层延迟 = 走到位的几何 & 滤波器滞后' : '延迟偏大');
   setVerdict(`<b>结论：</b>换层的延迟 <b>不是</b>算法算得慢，而是<b>物理上你得先走近</b>：\n   两个装置强度相等的中点在两层之间，你要走过去、并且领先现任 3 dB，才会换。\n   走路速度 0.62 m/s、层高 2.6 m 时，平均 <b>${r.oLat!==null? (r.oLat/1000).toFixed(1)+' s':'—'}</b> 完成换层；\n   把它调快的方法是<b>减小 minLeadDb</b>（代价：中间位置更爱抖）。这是个可以现场用这一页配平的权衡。`);
 };

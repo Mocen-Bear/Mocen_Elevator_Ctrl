@@ -97,7 +97,7 @@
     background:radial-gradient(circle at 50% 32%,#12233a,#070D16 74%);
     border:1px solid #16283a;overflow:hidden;touch-action:none;cursor:grab}
   .shaftWrap:active{cursor:grabbing}
-  /* 上下渐隐：让 1F / 4F 的“半截”融进黑暗里，像虚影 */
+  /* 上下渐隐：让 B / 3F 的“半截”融进黑暗里，像虚影 */
   .shaftWrap::before,.shaftWrap::after{content:"";position:absolute;left:0;right:0;height:22%;
     pointer-events:none;z-index:2}
   .shaftWrap::before{top:0;background:linear-gradient(180deg,rgba(3,7,12,.82),rgba(3,7,12,0))}
@@ -130,7 +130,7 @@
 <body>
 
 <h1>导航 App · 悬浮呼梯按钮 交互预览</h1>
-<div class="sub">井道 1F–4F ｜ 呼梯装置在 <b style="color:#8fe3b4">2F / 3F</b> ｜ 呼梯只有一台电梯（甲梯）；乙梯只看位置</div>
+<div class="sub">井道 B–3F ｜ 呼梯装置在 <b style="color:#8fe3b4">1F / 2F</b> ｜ 呼梯只有一台电梯（甲梯）；乙梯只看位置</div>
 
 <div class="row">
 
@@ -146,7 +146,7 @@
           </g>
           <g stroke="#1d3448" stroke-width="1"><path d="M0 340 H352"/><path d="M176 0 V740"/></g>
         </svg>
-        <div class="mapLabel" style="left:108px;top:158px">3F 走廊</div>
+        <div class="mapLabel" style="left:108px;top:158px">2F 走廊</div>
         <div class="mapLabel" style="left:262px;top:488px">电梯厅</div>
         <div class="routeArrow">▲</div>
       </div>
@@ -166,16 +166,16 @@
           </g>
           <g stroke="#1d3448" stroke-width="1"><path d="M0 340 H352"/><path d="M176 0 V740"/></g>
         </svg>
-        <div class="mapLabel" style="left:108px;top:158px">3F 走廊</div>
+        <div class="mapLabel" style="left:108px;top:158px">2F 走廊</div>
         <div class="mapLabel" style="left:262px;top:488px">电梯厅</div>
         <div class="routeArrow" style="top:64%;left:42%">▲</div>
-        <div class="badge" style="left:20px;top:100px">已靠近 <b style="color:#8fe3b4">2F 电梯</b><br>目的地 3F → 需上行</div>
+        <div class="badge" style="left:20px;top:100px">已靠近 <b style="color:#8fe3b4">1F 电梯</b><br>目的地 2F → 需上行</div>
         <div class="fabHint">向左拖 →</div>
-        <div class="fab"><div class="arw">▲</div><div class="fl">2F</div></div>
+        <div class="fab"><div class="arw">▲</div><div class="fl">1F</div></div>
       </div>
     </div>
     <div class="caption"><span class="num">2</span><b>靠近 ESP32（RSSI 够强）</b>：右侧浮出小圆钮。<br>
-      显示<b>要按的那一层</b>（2F，你在的层）与方向（▲ 上行，因为要去 3F）。<br>
+      显示<b>要按的那一层</b>（1F，你在的层）与方向（▲ 上行，因为要去 2F）。<br>
       <b>点它 = 一键呼梯</b>；<b>向左拖 = 进全屏电梯页</b>。</div>
   </div>
 
@@ -193,10 +193,10 @@
       <!-- 顶部：地图条 + “模拟你靠近哪层”（演示用） -->
       <div class="mapStrip">
         <span class="backPill">← 地图</span>
-        <span class="t">已靠近 <b id="stripFloor" style="color:#8fe3b4">2F</b> 电梯</span>
+        <span class="t">已靠近 <b id="stripFloor" style="color:#8fe3b4">1F</b> 电梯</span>
         <div class="simBtns" title="演示用：切换“你站在哪层”，轿厢会跟着走">
-          <span class="simBtn on" data-sim="2F">模拟 2F</span>
-          <span class="simBtn" data-sim="3F">模拟 3F</span>
+          <span class="simBtn on" data-sim="1F">模拟 1F</span>
+          <span class="simBtn" data-sim="2F">模拟 2F</span>
         </div>
       </div>
 
@@ -204,7 +204,7 @@
         <h2>电梯呼叫</h2>
 
         <div class="display">
-          <div class="big" id="bigFloor">2F</div>
+          <div class="big" id="bigFloor">1F</div>
         </div>
 
         <!-- 真 3D 井道：可拖动旋转（与 Android ElevatorView.kt 同一套数学） -->
@@ -213,12 +213,12 @@
           <div class="shaftHint">手指拖动可旋转 · 不自动旋转</div>
         </div>
 
-        <div class="rowLabel">呼叫目标（点选要按哪一层）· 1F / 4F 无装置</div>
+        <div class="rowLabel">呼叫目标（点选要按哪一层）· B / 3F 无装置</div>
         <div class="floorRow" id="floorRow">
-          <div class="fbtn off" data-f="1F">1F</div>
-          <div class="fbtn sel" data-f="2F">2F</div>
-          <div class="fbtn" data-f="3F">3F</div>
-          <div class="fbtn off" data-f="4F">4F</div>
+          <div class="fbtn off" data-f="B">B</div>
+          <div class="fbtn sel" data-f="1F">1F</div>
+          <div class="fbtn" data-f="2F">2F</div>
+          <div class="fbtn off" data-f="3F">3F</div>
         </div>
 
         <div class="calls">
@@ -226,12 +226,12 @@
           <div class="cbtn" data-dir="DOWN"><div class="inner">▼<small>下行</small></div></div>
         </div>
 
-        <div class="bottom" id="bottomBar">已就绪 · 呼叫目标 2F</div>
+        <div class="bottom" id="bottomBar">已就绪 · 呼叫目标 1F</div>
       </div>
     </div>
     <div class="caption"><span class="num">3</span><b>向左拖出</b>：<b>全屏电梯页</b>（对齐安卓 App，页里 `← 地图` 退回）。<br>
-      <b>井道是真 3D</b>，手指拖动可旋转；<b>2F / 3F 按钮切换呼叫目标</b>（1F/4F 灰掉，没装置）。<br>
-      上面那排“模拟 2F / 3F”只是演示用——切换你站在哪层，轿厢会跟着走。<br>
+      <b>井道是真 3D</b>，手指拖动可旋转；<b>1F / 2F 按钮切换呼叫目标</b>（B/3F 灰掉，没装置）。<br>
+      上面那排“模拟 1F / 2F”只是演示用——切换你站在哪层，轿厢会跟着走。<br>
       <span style="color:#7f97ad">注：真机上这一页是<b>两台井道并排</b>（甲梯 / 乙梯，各自显示轿厢在哪层）；
       这里只画一台，方便讲 3D 井道本身。</span></div>
   </div>
@@ -241,17 +241,17 @@
 <div style="max-width:1060px;margin:34px auto 0;color:var(--txt2);font-size:13px;line-height:1.9">
   <div style="color:var(--txt);font-weight:700;font-size:15px;margin-bottom:8px">规则速记（队友实现要点）</div>
   ① <b style="color:var(--txt)">按哪一层的按钮</b> = 你<b style="color:#8fe3b4">当前所在层</b>（最近的那块 ESP32）；<b style="color:var(--txt)">上/下</b> = 目的地比当前层高/低。
-  <br>② 正在 2F 要去 3F → 给 <code>ELEV-2F</code> 写 <code>UP</code>；正在 3F 要去 1F → 给 <code>ELEV-3F</code> 写 <code>DOWN</code>；同层不显示按钮。
+  <br>② 正在 1F 要去 2F → 给 <code>ELEV-1F</code> 写 <code>UP</code>；正在 2F 要去 B → 给 <code>ELEV-2F</code> 写 <code>DOWN</code>；同层不显示按钮。
   <br>③ 浮出门槛 <code>RSSI &gt; -70 dBm</code>（持续 0.5s），收起 <code>&lt; -80 dBm</code>（持续 1.5s）——差 10 dB 做滞回，防闪。
-  <br>④ 成功以收到 <code>2F|OK:UP</code> 通知为准；发送中禁用按钮，防连点（固件队列深度 8）。
-  <br>⑤ 复杂 3D 井道在 iOS 端可选做（SceneKit / Canvas）；全屏页不做 3D，只要「大字层显（甲/乙）+ ▲/▼ + 2F/3F 切换」就已经够像了。
+  <br>④ 成功以收到 <code>1F|OK:UP</code> 通知为准；发送中禁用按钮，防连点（固件队列深度 8）。
+  <br>⑤ 复杂 3D 井道在 iOS 端可选做（SceneKit / Canvas）；全屏页不做 3D，只要「大字层显（甲/乙）+ ▲/▼ + 1F/2F 切换」就已经够像了。
   <br>⑥ 完整协议见 <code>BLE_PROTOCOL.md</code>，交互细节见 <code>NAV_APP_UI_SPEC.md</code>（含 §10：全屏页里"轿厢在哪层"从哪来）。
 </div>
 
 <script>
 /* ==================================================================
    3D 井道渲染：与 android/.../ElevatorView.kt 同一套数学
-   （只有拖动旋转，不自动旋转；楼层 1F~4F）
+   （只有拖动旋转，不自动旋转；楼层 B~3F）
    ================================================================== */
 (function () {
   const cv = document.getElementById('shaft3d');
@@ -263,7 +263,7 @@
   const DIST = 9.0, NEAR = 0.15;
   const L = [0.40, 0.80, 0.45];
 
-  const FLOORS = ["1F", "2F", "3F", "4F"];
+  const FLOORS = ["B", "1F", "2F", "3F"];
   const slabY = i => i * floorGap;
   const carCenterY = i => slabY(i) + carHalfH + carClear;
   const doorH = () => carHalfH * 2 - 0.18;
@@ -271,14 +271,14 @@
   const shaftBottom = slabY(0) - pitDepth;
   const shaftTop = carCenterY(FLOORS.length - 1) + carHalfH + headroom;
 
-  // ── 视野窗口：2F / 3F 做完整，1F / 4F 只露一小截并做“暗影” ──
-  const viewBottom = slabY(1) - 1.00;   // 往 1F 里多露 1.0
-  const viewTop    = slabY(3) + 0.80;   // 往 4F 里多露 0.8
+  // ── 视野窗口：1F / 2F 做完整，B / 3F 只露一小截并做“暗影” ──
+  const viewBottom = slabY(1) - 1.00;   // 往 B 里多露 1.0
+  const viewTop    = slabY(3) + 0.80;   // 往 3F 里多露 0.8
   const viewCenterY = (viewBottom + viewTop) / 2;
   const viewHeight  = viewTop - viewBottom;
-  const bandBottom = slabY(1);          // 2F 楼板
-  const bandTop    = slabY(3);          // 4F 楼板
-  const GHOST = 0.26;                   // 虚影（1F/4F）透明度系数
+  const bandBottom = slabY(1);          // 1F 楼板
+  const bandTop    = slabY(3);          // 3F 楼板
+  const GHOST = 0.26;                   // 虚影（B/3F）透明度系数
 
   let yaw = 0.42, pitch = -0.13, dragging = false, lastX = 0, lastY = 0;
   let carY = carCenterY(1), carTargetY = carCenterY(1), cwY = 0;
@@ -348,7 +348,7 @@
     return "#" + h(ar+(br-ar)*k) + h(ag+(bg-ag)*k) + h(ab+(bb-ab)*k);
   }
   function setQuad(x0,y0,z0,x1,y1,z1,x2,y2,z2,x3,y3,z3){ verts = [x0,y0,z0,x1,y1,z1,x2,y2,z2,x3,y3,z3]; }
-  /** 1F / 4F 的区域画成“暗影” */
+  /** B / 3F 的区域画成“暗影” */
   function ghostAt(y) { return y < bandBottom || y > bandTop; }
   function emitQuad(hexs, alpha, brightOverride) {
     let b = (brightOverride > 0) ? brightOverride : brightness(), p = [], d = 0, ys = 0;
@@ -556,11 +556,11 @@
   const bottomBar = document.getElementById('bottomBar');
   const floorRow = document.getElementById('floorRow');
 
-  const DEVICE_FLOORS = ['2F', '3F'];   // 只有这两层有装置
-  const ALL_FLOORS = ['1F', '2F', '3F', '4F'];
+  const DEVICE_FLOORS = ['1F', '2F'];   // 只有这两层有装置
+  const ALL_FLOORS = ['B', '1F', '2F', '3F'];
 
-  let nearFloor = '2F';        // 你在哪层（轿厢跟它走）
-  let target = '2F';           // 呼叫目标（楼层按钮选的）
+  let nearFloor = '1F';        // 你在哪层（轿厢跟它走）
+  let target = '1F';           // 呼叫目标（楼层按钮选的）
 
   function render() {
     bigFloor.textContent = nearFloor;
@@ -581,7 +581,7 @@
     if (!el) return;
     const f = el.dataset.f;
     if (!DEVICE_FLOORS.includes(f)) {
-      bottomBar.textContent = `${f} 没有呼梯装置（本演示只有 2F / 3F）`;
+      bottomBar.textContent = `${f} 没有呼梯装置（本演示只有 1F / 2F）`;
       return;
     }
     target = f;
