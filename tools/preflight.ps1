@@ -83,7 +83,7 @@ if (Test-Path -LiteralPath $main) {
 # ---------------------------------------------------------------- 3) 旧楼层残留
 Head "3) 旧楼层残留"
 
-$stale = @('elevator_3F', 'ELEV-3F', 'elevator_4F', 'ELEV-4F')
+$stale = @('elevator_3' + 'F', 'ELEV-3' + 'F', 'elevator_4' + 'F', 'ELEV-4' + 'F')
 $scanExt = @('.md', '.kt', '.ino', '.html', '.ps1', '.py', '.swift', '.json', '.yml', '.txt')
 $hits = @()
 Get-ChildItem -LiteralPath . -Recurse -File -Force |
@@ -106,13 +106,16 @@ if ($hits.Count -eq 0) {
 # ---------------------------------------------------------------- 4) 文档链接
 Head "4) 文档相对链接"
 
-$py = Get-Command python -ErrorAction SilentlyContinue
-if (-not $py) { $py = Get-Command py -ErrorAction SilentlyContinue }
+$py = $null
+foreach ($cand in @('py', 'python')) {
+    $c = Get-Command $cand -ErrorAction SilentlyContinue
+    if ($c -and $c.Source -and $c.Source -notmatch 'WindowsApps') { $py = $c.Source; break }
+}
 if ($py) {
-    & $py.Source 'tools/check_links.py'
+    & $py 'tools/check_links.py'
     if ($LASTEXITCODE -eq 0) { Ok "Markdown 相对链接全部有效" } else { Bad "有失效的 Markdown 链接" }
 } else {
-    Warn "本机没有 python，跳过链接检查（CI 的 doc-links 会跑这一项）"
+    Warn "本机没有可用的 python，跳过链接检查（CI 的 doc-links 会跑这一项）"
 }
 
 # ---------------------------------------------------------------- 5) 成品固件
