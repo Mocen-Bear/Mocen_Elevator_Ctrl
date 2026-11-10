@@ -36,10 +36,10 @@
 | 方法 | 路径 | 作用 |
 |---|---|---|
 | GET | `/api/ping` | 探活，确认是电梯 App |
-| GET | `/api/floors` | 可呼叫的楼层（= 装了装置的层：`2F` / `3F`） |
+| GET | `/api/floors` | 可呼叫的楼层（= 装了装置的层：`1F` / `2F`） |
 | GET | `/api/status` | 当前靠近楼层 / 呼叫目标 / 各节点信号 |
-| GET | `/api/call?floor=3F&dir=UP` | **叫电梯**（让该层 ESP32 的舵机按下按钮） |
-| GET | `/api/target?floor=3F` | 设置“呼叫目标楼层”（等价于点 App 里的 2F/3F） |
+| GET | `/api/call?floor=2F&dir=UP` | **叫电梯**（让该层 ESP32 的舵机按下按钮） |
+| GET | `/api/target?floor=2F` | 设置“呼叫目标楼层”（等价于点 App 里的 1F/2F） |
 
 所有响应都是 `application/json`，并带 `Access-Control-Allow-Origin: *`（网页里 `fetch()` 可直接调）。
 
@@ -54,10 +54,10 @@
 
 ### `GET /api/floors`
 ```json
-{ "ok": true, "floors": ["2F", "3F"] }
+{ "ok": true, "floors": ["1F", "2F"] }
 ```
-> 本演示**井道是 1F–4F 四层**，但**只有 2F、3F 装了呼梯装置**（中间层才有上行+下行，
-> 1F 只有上行、4F 只有下行）。所以**能呼叫的只有 `2F` / `3F`**（这里的 `floors`）。
+> 本演示**井道是 B–3F 四层**，但**只有 1F、2F 装了呼梯装置**（中间层才有上行+下行，
+> B 只有上行、3F 只有下行）。所以**能呼叫的只有 `1F` / `2F`**（这里的 `floors`）。
 > 四层井道本身在 `/api/status` 的 `shaftFloors` 里。
 
 ### `GET /api/status`
@@ -75,7 +75,7 @@
 
 > 硬件**看不到轿厢**（板子只知道"我这层的按钮被按了"）。**现在的默认来源就是 `near` = 蓝牙判层**：
 > **用户拿着手机坐在轿厢里**时，"用户靠近哪层"就是"轿厢在哪层" —— 不是猜的，是信号强弱量出来的
-> （判层规则见 `BLE_PROTOCOL.md`）。装置只装在 **2F / 3F**，所以只有这两层判得出来。
+> （判层规则见 `BLE_PROTOCOL.md`）。装置只装在 **1F / 2F**，所以只有这两层判得出来。
 > `camera` / `manual` 是"摄像头读电梯厅那块屏"那条路，**现已搁置**；真读到时会优先于 `near`，
 > 而且超过 3 分钟没人更新就自动作废（退回 `near`）。
 
@@ -83,39 +83,39 @@
 {
   "ok": true,
   "api": 1,
-  "near": "3F",
-  "target": "3F",
-  "car": "3F",
+  "near": "2F",
+  "target": "2F",
+  "car": "2F",
   "carSource": "camera",
   "car2": "1F",
-  "floors": ["2F", "3F"],
-  "shaftFloors": ["1F", "2F", "3F", "4F"],
+  "floors": ["1F", "2F"],
+  "shaftFloors": ["B", "1F", "2F", "3F"],
   "nodes": [
-    { "floor": "2F", "address": "AA:BB:CC:DD:EE:01", "name": "ELEV-2F", "rssi": -78, "ready": true },
-    { "floor": "3F", "address": "AA:BB:CC:DD:EE:02", "name": "ELEV-3F", "rssi": -52, "ready": true }
+    { "floor": "1F", "address": "AA:BB:CC:DD:EE:01", "name": "ELEV-1F", "rssi": -78, "ready": true },
+    { "floor": "2F", "address": "AA:BB:CC:DD:EE:02", "name": "ELEV-2F", "rssi": -52, "ready": true }
   ]
 }
 ```
 
-### `GET /api/call?floor=3F&dir=UP`  ← 核心
+### `GET /api/call?floor=2F&dir=UP`  ← 核心
 - `dir`：`UP`（上行）/ `DOWN`（下行）。也接受 `上/下/上行/下行`。
 - `floor`：可选。不传就用当前呼叫目标（`target`），再退化到你靠近的楼层。
 - 成功（命令已下发，舵机开始动作）：
   ```json
-  { "ok": true, "floor": "3F", "dir": "UP", "message": "已下发 上行 → 3F" }
+  { "ok": true, "floor": "2F", "dir": "UP", "message": "已下发 上行 → 2F" }
   ```
 - 失败（例如该层装置没连上 / 楼层未知）→ HTTP `409`：
   ```json
-  { "ok": false, "floor": "3F", "dir": "UP", "message": "3F 装置连接中，请稍候" }
+  { "ok": false, "floor": "2F", "dir": "UP", "message": "2F 装置连接中，请稍候" }
   ```
 
 > 注意：这里是**“命令已下发”**的即时结果。舵机动作完成后的真实回执由 App 自己显示，
 > 目前不通过 HTTP 回推（需要的话可以加 `/api/status` 轮询 `nodes[].ready` 或后续加推送）。
 
-### `GET /api/target?floor=3F`
+### `GET /api/target?floor=2F`
 设置呼叫目标（不触发呼叫），返回：
 ```json
-{ "ok": true, "target": "3F" }
+{ "ok": true, "target": "2F" }
 ```
 
 ---
@@ -126,7 +126,7 @@
 ```bash
 curl http://192.168.1.23:8899/api/ping
 curl http://192.168.1.23:8899/api/status
-curl "http://192.168.1.23:8899/api/call?floor=3F&dir=UP"
+curl "http://192.168.1.23:8899/api/call?floor=2F&dir=UP"
 curl "http://192.168.1.23:8899/api/call?dir=DOWN"      # 用当前目标楼层
 ```
 
@@ -154,14 +154,14 @@ struct ElevatorAPI {
 ```
 使用：
 ```swift
-ElevatorAPI().call(floor: "3F", dir: "UP") { ok, msg in
-    print(ok, msg)   // true 已下发 上行 → 3F
+ElevatorAPI().call(floor: "2F", dir: "UP") { ok, msg in
+    print(ok, msg)   // true 已下发 上行 → 2F
 }
 ```
 
 ### JavaScript / 网页
 ```js
-const r = await fetch("http://192.168.1.23:8899/api/call?floor=3F&dir=UP");
+const r = await fetch("http://192.168.1.23:8899/api/call?floor=2F&dir=UP");
 const j = await r.json();
 console.log(j.ok, j.message);
 ```
@@ -174,7 +174,7 @@ console.log(j.ok, j.message);
 
 1. 用户导航到电梯厅附近 → 调 `GET /api/call?floor=<当前层>&dir=<上行|下行>`，
    电梯提前被叫到你所在层；
-2. 或先 `GET /api/target?floor=3F` 设定目标，再 `GET /api/call?dir=DOWN`；
+2. 或先 `GET /api/target?floor=2F` 设定目标，再 `GET /api/call?dir=DOWN`；
 3. 想确认电梯状态 → 轮询 `GET /api/status` 看 `near` / `nodes[].ready`。
 
 > 建议由导航 App 在“到达某层的那一刻”调一次，而不是持续高频轮询，避免重复呼叫。
