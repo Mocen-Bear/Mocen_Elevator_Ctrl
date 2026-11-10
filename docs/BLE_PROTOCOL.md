@@ -29,16 +29,16 @@
 
 每块 ESP32 就是电梯厅里的一个“电子手指”，它：
 
-- 用 BLE **广播**自己的名字，如 `ELEV-2F`（代表“2F 的电梯呼叫节点”）；
+- 用 BLE **广播**自己的名字，如 `ELEV-1F`（代表“1F 的电梯呼叫节点”）；
 - 广播里带着一个固定服务 UUID `FFE0`，你据此过滤；
 - 提供一个**写特征** `FFE1`：你往里写 `UP` 或 `DOWN`，对应舵机就会真的去按“上行/下行”呼梯按钮；
-- 提供一个**读/通知特征** `FFE2`：按下动作**真正做完后**，它会 NOTIFY 回一条 `2F|OK:UP` 给你确认。
+- 提供一个**读/通知特征** `FFE2`：按下动作**真正做完后**，它会 NOTIFY 回一条 `1F|OK:UP` 给你确认。
 
 ```
-  iOS App ──扫描──►  发现 "ELEV-2F" (RSSI -55)
+  iOS App ──扫描──►  发现 "ELEV-1F" (RSSI -55)
           ──连接──►  服务 FFE0 → 特征 FFE1(写) / FFE2(通知)
-          ──写 "UP" 到 FFE1──►  ESP32 舵机按下 2F 上行按钮
-          ◄──NOTIFY "2F|OK:UP"──  （约 1.3 秒后，动作完成确认）
+          ──写 "UP" 到 FFE1──►  ESP32 舵机按下 1F 上行按钮
+          ◄──NOTIFY "1F|OK:UP"──  （约 1.3 秒后，动作完成确认）
 ```
 
 > **和“方式 B（走安卓 App 的 HTTP 中转）”的区别**：直连 BLE **不需要任何中间 App**，
@@ -51,16 +51,16 @@
 
 **设备身份只由“广播名”决定**，格式固定为 `ELEV-<楼层>`：
 
-> 📌 **本次演示部署**：井道是 **1F–4F** 四层，但只在 **2F 和 3F** 装了呼梯装置
-> （这两层同时有上行+下行按钮，才能演示上下行；1F 只会有上行、4F 只会有下行）。
-> 所以你只会扫到 `ELEV-2F` 和 `ELEV-3F` 两个节点，取**最近的**那个作为“你所在的层”。
+> 📌 **本次演示部署**：井道是 **B–3F** 四层，但只在 **1F 和 2F** 装了呼梯装置
+> （这两层同时有上行+下行按钮，才能演示上下行；B 只会有上行、3F 只会有下行）。
+> 所以你只会扫到 `ELEV-1F` 和 `ELEV-2F` 两个节点，取**最近的**那个作为“你所在的层”。
 
 | 广播名 | 楼层 | 服务 UUID | 命令 | 写特征 | 对应的物理按钮 |
 |---|---|---|---|---|---|
+| `ELEV-1F` | `1F` | `FFE0` | `UP` | `FFE1` | 1F 电梯厅的 **上行** 呼梯按钮 |
+| `ELEV-1F` | `1F` | `FFE0` | `DOWN` | `FFE1` | 1F 电梯厅的 **下行** 呼梯按钮 |
 | `ELEV-2F` | `2F` | `FFE0` | `UP` | `FFE1` | 2F 电梯厅的 **上行** 呼梯按钮 |
 | `ELEV-2F` | `2F` | `FFE0` | `DOWN` | `FFE1` | 2F 电梯厅的 **下行** 呼梯按钮 |
-| `ELEV-3F` | `3F` | `FFE0` | `UP` | `FFE1` | 3F 电梯厅的 **上行** 呼梯按钮 |
-| `ELEV-3F` | `3F` | `FFE0` | `DOWN` | `FFE1` | 3F 电梯厅的 **下行** 呼梯按钮 |
 
 补充对应（硬件层，供标定用）：
 
@@ -71,13 +71,13 @@
 
 所以对 iOS 来说：
 
-- **“哪一层”** = 广播名去掉前缀 `ELEV-`（`ELEV-3F` → `3F`）；
+- **“哪一层”** = 广播名去掉前缀 `ELEV-`（`ELEV-2F` → `2F`）；
 - **“上还是下”** = 你写的命令是 `UP` 还是 `DOWN`；
 - **“哪个电梯”** = 目前 1 个 ESP32 = 1 台电梯的某一层。若一间楼有多台电梯，
   参见 [§12 多电梯 / 楼栋标识](#12-可选扩展多电梯--楼栋标识)。
 
 > ⚠️ 语义注意：`UP` 指的是**“这一层的上行呼梯按钮”**，不是“让轿厢上行”。
-> 也就是它模拟的是人在 2F 按了“↑”。这正好和真人在电梯厅按按钮一样。
+> 也就是它模拟的是人在 1F 按了“↑”。这正好和真人在电梯厅按按钮一样。
 
 ---
 
@@ -85,7 +85,7 @@
 
 | 项 | 值 |
 |---|---|
-| 广播名（GAP name） | `ELEV-2F` / `ELEV-3F`（放在 **scan response** 里） |
+| 广播名（GAP name） | `ELEV-1F` / `ELEV-2F`（放在 **scan response** 里） |
 | 广播内容 | 含 **16-bit 服务 UUID `FFE0`** |
 | 可连接 | 是（connectable） |
 | 发射功率 | +9 dBm（`ESP_PWR_LVL_P9`） |
@@ -119,7 +119,7 @@
 - 无需请求更大的 MTU：所有报文都很短（< 20 字节）。
 - **支持多台手机同时连接（固件 v5）**：每块 ESP32 最多 **3 台手机**同时连上并**各自独立控制**，
   见 [§13](#13-多台手机--多块板子同时使用v5)。
-- 一台手机可以**同时连接 2F 和 3F 两块板子**（iOS 的 CoreBluetooth 天然支持多外设）。
+- 一台手机可以**同时连接 1F 和 2F 两块板子**（iOS 的 CoreBluetooth 天然支持多外设）。
 - 回执（`OK:*`）是**广播式**的：所有已订阅的手机都会收到同一条通知。
 
 > iOS 里 16-bit UUID 可以简写：`CBUUID(string: "FFE0")`，CoreBluetooth 会自动补全。
@@ -153,13 +153,13 @@
 |---|---|---|
 | `READY` | 你**读**一次 `FFE2` 时（初始值） | 节点已就绪，等待命令 |
 | `OK` | 你对 `PING`/`?`/`STATUS` 的回执 | 节点在线 |
-| `OK:UP` | `UP` 动作**真正完成**后 | 2F/3F 上行按钮已按下 ✅ |
+| `OK:UP` | `UP` 动作**真正完成**后 | 1F/2F 上行按钮已按下 ✅ |
 | `OK:DOWN` | `DOWN` 动作**真正完成**后 | 下行按钮已按下 ✅ |
 | `OK:ALL` | 收到 `ALL` 时**立即** | 已受理，双轴即将动作 |
 | `ERR:BADCMD` | 收到无法识别的命令 | 命令非法（大小写已归一，通常是拼写错） |
 | `ERR:QUEUE_FULL` | 命令队列（深度 8）满 | 发太快了，请降速重试 |
 
-示例：连到 `ELEV-3F` 后写 `DOWN`，约 1.3 秒后收到 `3F|OK:DOWN`。
+示例：连到 `ELEV-2F` 后写 `DOWN`，约 1.3 秒后收到 `2F|OK:DOWN`。
 
 > **重要**：`UP`/`DOWN` **不会**立即回执，只有舵机真正按压并收回后才发 `OK:UP`/`OK:DOWN`。
 > 所以这条 NOTIFY 就是你给用户的**“操作成功”确认**（而不是“已发送”）。
@@ -174,7 +174,7 @@ App                         ESP32
  │                           │  OUT  350ms   舵机从 20° 转到 150°（伸出按压）
  │                           │  HOLD 600ms   保持按住
  │                           │  IN   350ms   从 150° 回到 20°（收回）
- │  NOTIFY "2F|OK:UP"        │
+ │  NOTIFY "1F|OK:UP"        │
  │◄──────────────────────────┤  （动作完成后才发）
  │        合计 ≈ 1.3s        │
 ```
@@ -209,7 +209,7 @@ App                         ESP32
 
 8. **发命令**：`writeValue(Data("UP".utf8), for: cmdChar, type: .withResponse)`。
 
-9. **等待回执**：在 `didUpdateValueFor` 里解析 `2F|OK:UP` → 给用户“已按下”。
+9. **等待回执**：在 `didUpdateValueFor` 里解析 `1F|OK:UP` → 给用户“已按下”。
 
 > 真机才能用 BLE（模拟器不支持）。iOS 屏幕上会弹蓝牙授权，必须允许。
 
@@ -231,8 +231,8 @@ enum ElevatorBLE {
 // MARK: - 一个节点的本地状态
 struct ElevatorNode {
     let peripheral: CBPeripheral
-    let name: String            // "ELEV-2F"
-    let floor: String           // "2F"
+    let name: String            // "ELEV-1F"
+    let floor: String           // "1F"
     var rssi: Int
     var ready: Bool
     var cmdChar: CBCharacteristic?
@@ -245,7 +245,7 @@ final class ElevatorCentral: NSObject, CBCentralManagerDelegate, CBPeripheralDel
     private var central: CBCentralManager!
     private(set) var nodes: [UUID: ElevatorNode] = [:]   // key = peripheral.identifier
 
-    /// 收到节点回执：floor 如 "2F"，body 如 "OK:UP" / "READY" / "ERR:BADCMD"
+    /// 收到节点回执：floor 如 "1F"，body 如 "OK:UP" / "READY" / "ERR:BADCMD"
     var onStatus: ((_ floor: String, _ body: String) -> Void)?
     /// 节点列表 / RSSI / ready 有变化
     var onNodesChanged: (() -> Void)?
@@ -409,7 +409,7 @@ elev.onStatus = { floor, body in
 }
 
 // 用户点“呼叫电梯”
-elev.call(floor: "3F", up: true)
+elev.call(floor: "2F", up: true)
 ```
 
 ---
@@ -447,15 +447,15 @@ elev.call(floor: "3F", up: true)
 
 ## 9. 用 nRF Connect / LightBlue 快速验证（5 分钟）
 
-1. 上电 ESP32，串口 115200 应打印 `=== 电梯节点启动：ELEV-2F ===` 与 `[ble] 广播中`。
+1. 上电 ESP32，串口 115200 应打印 `=== 电梯节点启动：ELEV-1F ===` 与 `[ble] 广播中`。
 2. 手机装 **nRF Connect**（Android/iOS 都有）。
-3. 扫描 → 找到 `ELEV-2F` → 点 **CONNECT**。
+3. 扫描 → 找到 `ELEV-1F` → 点 **CONNECT**。
 4. 展开服务 `FFE0`：
-   - 读 `FFE2` 应得到 `2F|READY`；
+   - 读 `FFE2` 应得到 `1F|READY`；
    - 点 `FFE2` 的 **订阅**（三条箭头 / notify 图标）。
 5. 点 `FFE1` → **写** → 输入 `UP` → 发送。
-6. 约 1.3 秒后应看到 `FFE2` 弹出通知 `2F|OK:UP`；舵机摆动。
-7. 发 `PING` → 立即回 `2F|OK`；发 `HELLO` → 回 `2F|ERR:BADCMD`。
+6. 约 1.3 秒后应看到 `FFE2` 弹出通知 `1F|OK:UP`；舵机摆动。
+7. 发 `PING` → 立即回 `1F|OK`；发 `HELLO` → 回 `1F|ERR:BADCMD`。
 
 ---
 
@@ -477,12 +477,12 @@ elev.call(floor: "3F", up: true)
 ## 11. 常量速查
 
 ```
-广播名前缀      ELEV-           例：ELEV-2F / ELEV-3F
+广播名前缀      ELEV-           例：ELEV-1F / ELEV-2F
 服务(UUID)      FFE0   (0000ffe0-0000-1000-8000-00805f9b34fb)
 命令特征(写)    FFE1   (0000ffe1-0000-1000-8000-00805f9b34fb)   Write | WriteNR
 状态特征(读+通知) FFE2 (0000ffe2-0000-1000-8000-00805f9b34fb)   Read | Notify, 带 CCCD
 命令            UP | DOWN | ALL | S1 | S2 | PING | ? | STATUS
-回执格式        <楼层>|<内容>     例：2F|READY 2F|OK:UP 2F|ERR:BADCMD
+回执格式        <楼层>|<内容>     例：1F|READY 1F|OK:UP 1F|ERR:BADCMD
 动作耗时        ≈1300 ms（OUT 350 + HOLD 600 + IN 350）
 引脚            UP=D13(GPIO13)  DOWN=D12(GPIO12)
 配对/加密       无
@@ -493,18 +493,18 @@ elev.call(floor: "3F", up: true)
 
 ## 12. 可选扩展：多电梯 / 楼栋标识
 
-现在的名字只编码了楼层（`ELEV-2F`），**没编码“哪栋楼 / 哪台电梯”**。
+现在的名字只编码了楼层（`ELEV-1F`），**没编码“哪栋楼 / 哪台电梯”**。
 如果一间楼有多台电梯、或多栋楼，建议按下述任一方式扩展（需改固件后重烧，当前未实现）：
 
-- **方案 1（改名字）**：`ELEV-<楼栋><电梯><楼层>`，如 `ELEV-A1-3F`。
+- **方案 1（改名字）**：`ELEV-<楼栋><电梯><楼层>`，如 `ELEV-A1-2F`。
   - 好处：iOS 一眼解析出全部信息；
   - 代价：需同步通知本仓库的安卓 App 调整解析规则。
-- **方案 2（不改名字，加“服务数据”）**：名字保持 `ELEV-3F`（向后兼容），
+- **方案 2（不改名字，加“服务数据”）**：名字保持 `ELEV-2F`（向后兼容），
   额外在广播里塞一段自定义 service data / manufacturer data 作为设备 ID。
   - iOS 从 `advertisementData[CBAdvertisementDataServiceDataKey]` /
     `CBAdvertisementDataManufacturerDataKey` 读取，无需连接。
 - **方案 3（不改广播，加 `INFO` 命令）**：连上后写 `INFO`，由 `FFE2` 回一条结构化串，
-  如 `2F|INFO:ELEV=A1,FLOOR=2F,UP=1,DOWN=1`。
+  如 `1F|INFO:ELEV=A1,FLOOR=1F,UP=1,DOWN=1`。
   - 受 ATT MTU 限制，字符串要短。
 
 > 需要的话可以让本项目维护者实现其中一种；文档与固件会同步更新。
@@ -513,13 +513,13 @@ elev.call(floor: "3F", up: true)
 
 ## 13. 多台手机 / 多块板子同时使用（v5）
 
-**目标**：任意多台手机都能连上任意一块 ESP32、各自独立叫电梯；同一台手机可以同时连着 2F 和 3F。
+**目标**：任意多台手机都能连上任意一块 ESP32、各自独立叫电梯；同一台手机可以同时连着 1F 和 2F。
 
 ### 13.1 能力与上限
 
 | 能力 | 是否支持 | 说明 |
 |---|---|---|
-| 一台手机同时连 2F + 3F 两块板 | ✅ | iOS CoreBluetooth 天然支持多外设，`connect()` 两次即可 |
+| 一台手机同时连 1F + 2F 两块板 | ✅ | iOS CoreBluetooth 天然支持多外设，`connect()` 两次即可 |
 | 多台手机同时连同一块板 | ✅ | 固件 v5 已支持，回执广播给所有已订阅的手机 |
 | 每块板上的手机数上限 | **3 台** | 硬上限，来自 ESP32 BLE 控制器 `CONFIG_BTDM_CTRL_BLE_MAX_CONN=3` |
 
@@ -539,7 +539,7 @@ elev.call(floor: "3F", up: true)
 ### 13.3 对 iOS 客户端的建议
 
 - 对**每一块**需要控制的板子各 `connect()` 一次；在 `didDiscover` 里对每个 `ELEV-*` 都发起连接。
-- 回执是**广播**的：如果你连着两块板，会分别收到 `2F|OK:UP` 和 `3F|OK:UP`——
+- 回执是**广播**的：如果你连着两块板，会分别收到 `1F|OK:UP` 和 `2F|OK:UP`——
   请**按通知里的楼层前缀区分**是哪块板回的，不要只看内容。
 - 不要假设“只有我一个客户端”。**别用“发完命令就立刻假设成功”**的写法，
   以收到的 `OK:*` 通知为准。
@@ -547,9 +547,9 @@ elev.call(floor: "3F", up: true)
 
 ### 13.4 现场验证
 
-1. 手机 A 连上 `ELEV-2F`，写 `UP` → 收到 `2F|OK:UP`。
-2. **保持 A 连着**，手机 B 也连 `ELEV-2F`，写 `DOWN` → A、B **都应**收到 `2F|OK:DOWN`。
-3. 手机 A 断开 → 手机 B 再写 `UP` → 手机 B **仍应**收到 `2F|OK:UP`（这是 v4 会失败、v5 已修复的关键点）。
+1. 手机 A 连上 `ELEV-1F`，写 `UP` → 收到 `1F|OK:UP`。
+2. **保持 A 连着**，手机 B 也连 `ELEV-1F`，写 `DOWN` → A、B **都应**收到 `1F|OK:DOWN`。
+3. 手机 A 断开 → 手机 B 再写 `UP` → 手机 B **仍应**收到 `1F|OK:UP`（这是 v4 会失败、v5 已修复的关键点）。
 4. 串口监视器应看到 `当前连接手机数：1 / 2 / …` 的变化。
 
 ---
