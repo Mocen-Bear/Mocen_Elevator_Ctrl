@@ -20,7 +20,7 @@
 
 > 面向：**iOS（校园室内导航 App）开发者**
 > 目标：让导航 App **自动发现并连接 ESP32**，读到自己需要的楼层 / 方向信息，并下发“按下呼梯按钮”的命令。
-> 本文档严格对应固件 **v5**：`firmware/elevator_2F/elevator_2F.ino`（**2F 板**）与
+> 本文档严格对应固件 **v5**：`firmware/elevator_1F/elevator_1F.ino`（**1F 板**）与
 > `firmware/elevator_2F/elevator_2F.ino`（**2F 板**）。
 
 ---
