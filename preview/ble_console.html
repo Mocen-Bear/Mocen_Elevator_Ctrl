@@ -49,9 +49,9 @@
 
 <h1>现场蓝牙控制台 <span class="kv">（备用 + 调试，不是产品路径）</span></h1>
 <div class="sub">
-  手机 App 万一扫不到 / 连不上，用**笔记本 Chrome** 打开这一页，直接给 <code>ELEV-2F</code> / <code>ELEV-3F</code>
+  手机 App 万一扫不到 / 连不上，用**笔记本 Chrome** 打开这一页，直接给 <code>ELEV-1F</code> / <code>ELEV-2F</code>
   发 <code>UP</code> / <code>DOWN</code>，回执就显示在下面。<br>
-  也可以连 <code>CHIME-2F</code> 看它报不报 <code>CAR:CHIME</code>（现场标"叮"声用）。
+  也可以连 <code>CHIME-1F</code> 看它报不报 <code>CAR:CHIME</code>（现场标"叮"声用）。
 </div>
 
 <div class="banner" id="ctx">检查浏览器能力中…</div>
@@ -96,7 +96,7 @@
     </div>
     <div class="kv">最近发送：<b id="last">—</b></div>
     <div class="kv">
-      <code>UP</code> = 舵机伸出 350 ms → 按住 600 ms → 收回 350 ms，<b>动作全部做完</b>才回 <code>2F|OK:UP</code>（约 1.3 秒）。
+      <code>UP</code> = 舵机伸出 350 ms → 按住 600 ms → 收回 350 ms，<b>动作全部做完</b>才回 <code>1F|OK:UP</code>（约 1.3 秒）。
       <b>别连点</b>：命令进队列（深度 8），满了会回 <code>ERR:QUEUE_FULL</code>。
     </div>
   </section>
@@ -118,12 +118,12 @@
       <tr><td>Service</td><td><code>0000ffe0-0000-1000-8000-00805f9b34fb</code></td></tr>
       <tr><td>命令特征（写）</td><td><code>0000ffe1-…</code> &nbsp;WRITE / WRITE_NR</td></tr>
       <tr><td>状态特征（读+通知）</td><td><code>0000ffe2-…</code> &nbsp;READ / NOTIFY</td></tr>
-      <tr><td>装置广播名</td><td><code>ELEV-2F</code> <code>ELEV-3F</code> <code>CHIME-2F</code> <code>CHIME-3F</code></td></tr>
+      <tr><td>装置广播名</td><td><code>ELEV-1F</code> <code>ELEV-2F</code> <code>CHIME-1F</code> <code>CHIME-2F</code></td></tr>
       <tr><td>呼梯命令</td><td><code>UP</code> <code>DOWN</code> <code>ALL</code> <code>S1</code> <code>S2</code> <code>PRESS 1</code> <code>PRESS 2</code> <code>PING</code> <code>?</code> <code>STATUS</code></td></tr>
       <tr><td>到站节点命令</td><td><code>PING</code> <code>?</code> <code>STATUS</code> <code>FLOOR</code> <code>LEVEL</code></td></tr>
-      <tr><td>回执格式</td><td><code>&lt;楼层&gt;|&lt;结果&gt;</code>，例如 <code>2F|OK:UP</code></td></tr>
-      <tr><td>常见回执</td><td><code>2F|READY</code>（开机）· <code>2F|OK</code>（PING）· <code>2F|OK:ALL</code> · <code>2F|ERR:BADCMD</code> · <code>2F|ERR:QUEUE_FULL</code></td></tr>
-      <tr><td>到站回执</td><td><code>2F|CAR:BOOT</code> · <code>2F|CAR:CHIME</code>（听到叮）· <code>2F|CAR:LAST</code> · <code>2F|READY:&lt;次数&gt;</code> · <code>2F|LEVEL:rms=…,hz=…,floor=…</code></td></tr>
+      <tr><td>回执格式</td><td><code>&lt;楼层&gt;|&lt;结果&gt;</code>，例如 <code>1F|OK:UP</code></td></tr>
+      <tr><td>常见回执</td><td><code>1F|READY</code>（开机）· <code>1F|OK</code>（PING）· <code>1F|OK:ALL</code> · <code>1F|ERR:BADCMD</code> · <code>1F|ERR:QUEUE_FULL</code></td></tr>
+      <tr><td>到站回执</td><td><code>1F|CAR:BOOT</code> · <code>1F|CAR:CHIME</code>（听到叮）· <code>1F|CAR:LAST</code> · <code>1F|READY:&lt;次数&gt;</code> · <code>1F|LEVEL:rms=…,hz=…,floor=…</code></td></tr>
       <tr><td>固件对命令的处理</td><td>收到的字节先 <code>trim()</code> 再 <code>toUpperCase()</code>，最长 23 字符</td></tr>
     </table>
     <div class="hint">回执里 <code>OK:UP</code> 的含义是"<b>舵机动作完成</b>"，不是"轿厢动了" —— 这一点我们对外从不含糊。</div>
@@ -246,7 +246,7 @@ function disconnect(){
 // ---------------- 离线自测（伪造回执，不碰蓝牙） ----------------
 function fakeRun(){
   line('', '—— 离线自测：下面这些都是**伪造**的回执，只为看日志长什么样 ——');
-  ['2F|READY', '2F|OK', '2F|OK:UP', '2F|LEVEL:rms=780,hz=1850,floor=12', '2F|CAR:CHIME', '2F|ERR:BADCMD']
+  ['1F|READY', '1F|OK', '1F|OK:UP', '1F|LEVEL:rms=780,hz=1850,floor=12', '1F|CAR:CHIME', '1F|ERR:BADCMD']
     .forEach(feed);
 }
 

@@ -47,16 +47,16 @@ http://<监控手机的IP>:8899/api/status
 {
   "ok": true,
   "api": 1,
-  "near": "2F",
-  "target": "3F",
-  "car": "3F",
+  "near": "1F",
+  "target": "2F",
+  "car": "2F",
   "carSource": "camera",
-  "car2": "1F",
-  "floors": ["2F", "3F"],
-  "shaftFloors": ["1F", "2F", "3F", "4F"],
+  "car2": "B",
+  "floors": ["1F", "2F"],
+  "shaftFloors": ["B", "1F", "2F", "3F"],
   "nodes": [
-    { "floor": "2F", "address": "AA:BB:CC:DD:EE:01", "name": "ELEV-2F", "rssi": -70, "ready": true },
-    { "floor": "3F", "address": "AA:BB:CC:DD:EE:02", "name": "ELEV-3F", "rssi": -55, "ready": true }
+    { "floor": "1F", "address": "AA:BB:CC:DD:EE:01", "name": "ELEV-1F", "rssi": -70, "ready": true },
+    { "floor": "2F", "address": "AA:BB:CC:DD:EE:02", "name": "ELEV-2F", "rssi": -55, "ready": true }
   ]
 }
 ```
@@ -65,13 +65,13 @@ http://<监控手机的IP>:8899/api/status
 
 | 字段 | 可能的值 | 意思 / 你要怎么用 |
 |---|---|---|
-| ★ `car` | `"3F"` / `null` | **甲梯轿厢在哪层**（全屏页那个大数字）。`null` = 没有数 |
+| ★ `car` | `"2F"` / `null` | **甲梯轿厢在哪层**（全屏页那个大数字）。`null` = 没有数 |
 | ★ `carSource` | `"camera"` `"manual"` `"near"` `null` | **这个数是怎么来的** —— 见下表，**别跳过** |
-| ★ `car2` | `"1F"` / `null` | **乙梯轿厢在哪层**。它**只会是真读数**（`null` = 没读到） |
-| `near` | `"2F"` | 我们按蓝牙 RSSI 判的「**你**靠近哪层」—— **现在这条路就是轿厢楼层**（`car` 会等于它） |
-| `target` | `"3F"` | 我们页面上选的目的层（可忽略） |
-| `floors` | `["2F","3F"]` | 装了呼梯装置的楼层 |
-| `shaftFloors` | `["1F","2F","3F","4F"]` | 井道有哪几层（画井道用） |
+| ★ `car2` | `"B"` / `null` | **乙梯轿厢在哪层**。它**只会是真读数**（`null` = 没读到） |
+| `near` | `"1F"` | 我们按蓝牙 RSSI 判的「**你**靠近哪层」—— **现在这条路就是轿厢楼层**（`car` 会等于它） |
+| `target` | `"2F"` | 我们页面上选的目的层（可忽略） |
+| `floors` | `["1F","2F"]` | 装了呼梯装置的楼层 |
+| `shaftFloors` | `["B","1F","2F","3F"]` | 井道有哪几层（画井道用） |
 | `nodes[]` | … | 每块装置：`floor` / `address` / `name` / `rssi` / `ready`（你直连蓝牙就有，可忽略） |
 
 `carSource` 的四种值：
@@ -183,7 +183,7 @@ http://192.168.1.23:8899/api/status          ← 换成监控手机的 IP
 
 这个包里给了你一份 **`monitor_live.html`**：它和安卓 App 里那两根井道**同一份数学**
 （玻璃井壁、导轨、厅门框、呼梯面板、曳引机、对重、曳引绳、楼层标签，**可拖动旋转**，
-1F / 4F 半截暗影，轿厢上下连续滑动）。
+B / 3F 半截暗影，轿厢上下连续滑动）。
 
 - 用 `WKWebView` 加载它就行（`loadFileURL(_:allowingReadAccessTo:)`）；
   **它自己每 1.5 秒轮询** `/api/status`，**你不用写轮询代码**。
@@ -230,7 +230,7 @@ http://192.168.1.23:8899/api/status          ← 换成监控手机的 IP
 
 ## 六、边界（说清楚，免得踩）
 
-- 这个接口**只读**，**不能叫电梯**。叫电梯永远走蓝牙：写 `UP`/`DOWN`，等回执 `2F|OK:UP`。
+- 这个接口**只读**，**不能叫电梯**。叫电梯永远走蓝牙：写 `UP`/`DOWN`，等回执 `1F|OK:UP`。
 - **甲 / 乙 是靠摄像头画面里的「左边 / 右边」分的**（左 = 甲、右 = 乙）。
   现场牌子和我们约定反了的话，**我们现场改**（不用你动）。
 - 一屏只读到一个数时，只有 `car`（甲），`car2` 是 `null`。
