@@ -83,21 +83,27 @@ if (Test-Path -LiteralPath $main) {
 # ---------------------------------------------------------------- 3) 旧楼层残留
 Head "3) 旧楼层残留"
 
-$stale = @('elevator_3' + 'F', 'ELEV-3' + 'F', 'elevator_4' + 'F', 'ELEV-4' + 'F')
+$stale = @(('elevator_3' + 'F'), ('ELEV-3' + 'F'), ('elevator_4' + 'F'), ('ELEV-4' + 'F'))
 $scanExt = @('.md', '.kt', '.ino', '.html', '.ps1', '.py', '.swift', '.json', '.yml', '.txt')
+$scanFiles = @(Get-ChildItem -LiteralPath . -Recurse -File -Force |
+    Where-Object {
+        $scanExt -contains $_.Extension -and
+        $_.FullName -notmatch '[\\/]\.git[\\/]' -and
+        $_.Name -notlike '_版本信息.md'   # 变更记录里出现旧楼层是正常的
+    } |
+    Select-Object -ExpandProperty FullName)
+
 $hits = @()
-Get-ChildItem -LiteralPath . -Recurse -File -Force |
-    Where-Object { $scanExt -contains $_.Extension -and $_.FullName -notmatch '[\\/]\.git[\\/]' } |
-    ForEach-Object {
-        $text = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
-        if (-not $text) { return }
-        foreach ($s in $stale) {
-            if ($text.Contains($s)) { $hits += (($_.FullName.Substring((Get-Location).Path.Length + 1)) + " -> " + $s) }
-        }
+if ($scanFiles.Count -gt 0) {
+    $found = @(Select-String -Path $scanFiles -Pattern $stale -Encoding UTF8 -ErrorAction SilentlyContinue)
+    $base = (Get-Location).Path.Length + 1
+    foreach ($m in $found) {
+        $hits += ($m.Path.Substring($base) + ":" + $m.LineNumber + " -> " + $m.Matches[0].Value)
     }
+}
 
 if ($hits.Count -eq 0) {
-    Ok "没有 elevator_3F / ELEV-3F / *_4F 之类的旧楼层引用"
+    Ok "没有旧楼层的名字残留（变更记录不计）"
 } else {
     foreach ($h in $hits) { Warn $h }
     Bad ("旧楼层引用 " + $hits.Count + " 处")
