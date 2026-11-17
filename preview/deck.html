@@ -77,7 +77,7 @@
   <h2>电梯厅里的三件小事</h2>
   <div class="cols3">
     <div class="box"><h3>① 手是满的</h3><p class="dim">拎着东西、戴着厚手套、抱着孩子 —— 那个按钮就是按不到。</p></div>
-    <div class="box"><h3>② 等得没道理</h3><p class="dim">按完才发现车在 4F；黑箱里发生了什么，你完全不知道。</p></div>
+    <div class="box"><h3>② 等得没道理</h3><p class="dim">按完才发现车在 3F；黑箱里发生了什么，你完全不知道。</p></div>
     <div class="box"><h3>③ 井道是黑箱</h3><p class="dim">墙后面有什么、车在哪、往哪走 —— 没有任何界面能告诉你。</p></div>
   </div>
   <p class="lead">我们只动<b>“人伸手按按钮”</b>这一件事，不碰电梯任何电气系统。</p>
@@ -92,9 +92,9 @@
     <span class="arrow">→</span>
     <div class="step"><b>② 判层</b>哪些装置近？哪层<br><span class="dim">扫到信号立刻重判 · 节流 40 ms</span></div>
     <span class="arrow">→</span>
-    <div class="step"><b>③ 浮出</b>右侧浮起“2F 上行”<br><span class="dim">点一下 / 说一句</span></div>
+    <div class="step"><b>③ 浮出</b>右侧浮起“1F 上行”<br><span class="dim">点一下 / 说一句</span></div>
     <span class="arrow">→</span>
-    <div class="step"><b>④ 按下</b>BLE 写命令 → <b>舵机压按钮</b><br><span class="dim">回执 2F|OK:UP</span></div>
+    <div class="step"><b>④ 按下</b>BLE 写命令 → <b>舵机压按钮</b><br><span class="dim">回执 1F|OK:UP</span></div>
   </div>
   <div class="cols" style="margin-top:.6vh">
     <div class="box"><h3>为什么判层要放在手机里</h3>
@@ -115,8 +115,8 @@
       <ul>
         <li>舵机行程 <b>350 ms 按下 + 600 ms 保持 + 350 ms 收回</b></li>
         <li>呼梯灯亮 = 电梯系统收到了这次呼叫</li>
-        <li>两块板：<b>2F / 3F</b>（D13 上行 · D12 下行）</li>
-        <li>回执 <code>2F|OK:UP</code> 的含义：<b>“舵机动作完成了”</b></li>
+        <li>两块板：<b>1F / 2F</b>（D13 上行 · D12 下行）</li>
+        <li>回执 <code>1F|OK:UP</code> 的含义：<b>“舵机动作完成了”</b></li>
       </ul></div>
     <div class="box"><h3>多个人同时用</h3>
       <ul>
@@ -136,8 +136,8 @@
     <div class="box"><h3>看得见的规矩</h3>
       <ul>
         <li>手指拖动旋转 / 俯仰，<b>不自动转</b></li>
-        <li><b>只有 2F / 3F 画全</b>（这两层真的能呼）</li>
-        <li>1F / 4F 是<b>半透明虚影</b>：结构在，但不冒充可用</li>
+        <li><b>只有 1F / 2F 画全</b>（这两层真的能呼）</li>
+        <li>B / 3F 是<b>半透明虚影</b>：结构在，但不冒充可用</li>
         <li>尺寸 / 逐件配色与 AR 规格文档<b>完全一致</b></li>
       </ul></div>
     <div class="box"><h3>一条不会越界的红线</h3>
@@ -181,7 +181,7 @@
       <ul>
         <li>一个麦克风模块（2~3 元）+ 4 kHz 采样</li>
         <li>40 ms 窗口算 <b>RMS + 过零率</b>，连续 2 窗命中 + 3 秒不应期</li>
-        <li>报文形状与按钮节点<b>完全相同</b>：<code>2F|CAR:CHIME</code></li>
+        <li>报文形状与按钮节点<b>完全相同</b>：<code>1F|CAR:CHIME</code></li>
         <li>固件已编译通过 ✓，标定台已就绪 ✓，<b>待现场标定</b></li>
       </ul></div>
     <div class="box"><h3>D · 摄像头读电梯自己的楼层显示</h3>
@@ -204,7 +204,7 @@
     <tbody>
       <tr><td>站在某一层装置旁</td><td>1 次</td><td class="ok"><b>1 次</b>（只有首次上线）</td><td>1 次</td></tr>
       <tr><td><b>站在两层正中间</b>（最坏位置）</td><td class="bad"><b>25.7 次横跳</b></td><td class="warn">4.3 次</td><td class="ok"><b>1.3 次</b></td></tr>
-      <tr><td>从 2F 走到 3F（3 s 走完）</td><td>1.9 s</td><td>2.1 s</td><td>2.5 s</td></tr>
+      <tr><td>从 1F 走到 2F（3 s 走完）</td><td>1.9 s</td><td>2.1 s</td><td>2.5 s</td></tr>
     </tbody>
   </table>
   <ul>
@@ -224,14 +224,14 @@
       <ul>
         <li>手机靠近 → 按钮浮出 → 点一下</li>
         <li>墙上：<b>舵机动、呼梯灯亮</b></li>
-        <li>手机收到 <code>2F|OK:UP</code></li>
+        <li>手机收到 <code>1F|OK:UP</code></li>
         <li>抬头：井道透视叠在走廊上</li>
       </ul></div>
     <div class="box"><h3>B · 30 秒产品演出（保险）</h3>
       <ul>
         <li>一页把全流程演完，<b>不需要电梯、不需要硬件、不需要网络</b></li>
         <li>可全屏放映、键盘控制（空格 / ← → / R）</li>
-        <li>演出里“位置来源”会从<b>模拟</b>切到<b>摄像头读到 2F</b></li>
+        <li>演出里“位置来源”会从<b>模拟</b>切到<b>摄像头读到 1F</b></li>
         <li>真机万一在会场出问题，靠这一页讲完</li>
       </ul></div>
   </div>

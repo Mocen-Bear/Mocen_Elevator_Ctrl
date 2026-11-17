@@ -144,7 +144,7 @@
   <!-- 顶部大字：电梯现在在几层 -->
   <div class="card" id="card">
     <div class="t">队友导航 App · 最终页面效果</div>
-    <div class="row"><span class="lbl">电梯现在在</span><span class="big" id="carFloor">1F</span></div>
+    <div class="row"><span class="lbl">电梯现在在</span><span class="big" id="carFloor">B</span></div>
     <div class="note" id="carNote">轿厢位置 · 模拟数据</div>
   </div>
 
@@ -152,7 +152,7 @@
   <div class="hint" id="hint">← 按住向左滑，进电梯大屏</div>
   <div class="fab" id="fab">
     <span class="a" id="fabArrow">▲</span>
-    <span class="f" id="fabFloor">2F</span>
+    <span class="f" id="fabFloor">1F</span>
     <span class="c">呼梯</span>
   </div>
 
@@ -167,10 +167,10 @@
 
     <div class="bigdisp">
       <div class="dsp">
-        <div class="n" id="bigFloorA">1F</div>
+        <div class="n" id="bigFloorA">B</div>
       </div>
       <div class="dsp b">
-        <div class="n" id="bigFloorB">3F</div>
+        <div class="n" id="bigFloorB">2F</div>
       </div>
     </div>
 
@@ -186,10 +186,10 @@
     </div>
 
     <div class="bigfloor">
+      <div class="pill" data-call="B">B</div>
       <div class="pill" data-call="1F">1F</div>
       <div class="pill" data-call="2F">2F</div>
       <div class="pill" data-call="3F">3F</div>
-      <div class="pill" data-call="4F">4F</div>
     </div>
 
     <div class="bigacts">
@@ -204,19 +204,19 @@
   <div class="simbar" id="simbar">
     <div class="note">模拟开关（真机上“你在哪层”来自蓝牙，轿厢位置来自摄像头）</div>
     <div class="srow"><div class="lab">你在</div>
-      <div class="pill" data-you="2F">2F</div><div class="pill" data-you="3F">3F</div>
+      <div class="pill" data-you="1F">1F</div><div class="pill" data-you="2F">2F</div>
     </div>
     <div class="srow"><div class="lab">要去</div>
-      <div class="pill" data-dest="1F">1F</div><div class="pill" data-dest="2F">2F</div>
-      <div class="pill" data-dest="3F">3F</div><div class="pill" data-dest="4F">4F</div>
+      <div class="pill" data-dest="B">B</div><div class="pill" data-dest="1F">1F</div>
+      <div class="pill" data-dest="2F">2F</div><div class="pill" data-dest="3F">3F</div>
     </div>
     <div class="srow"><div class="lab">甲梯</div>
-      <div class="pill" data-car="1F">1F</div><div class="pill" data-car="2F">2F</div>
-      <div class="pill" data-car="3F">3F</div><div class="pill" data-car="4F">4F</div>
+      <div class="pill" data-car="B">B</div><div class="pill" data-car="1F">1F</div>
+      <div class="pill" data-car="2F">2F</div><div class="pill" data-car="3F">3F</div>
     </div>
     <div class="srow"><div class="lab">乙梯</div>
-      <div class="pill" data-car2="1F">1F</div><div class="pill" data-car2="2F">2F</div>
-      <div class="pill" data-car2="3F">3F</div><div class="pill" data-car2="4F">4F</div>
+      <div class="pill" data-car2="B">B</div><div class="pill" data-car2="1F">1F</div>
+      <div class="pill" data-car2="2F">2F</div><div class="pill" data-car2="3F">3F</div>
       <div class="pill" id="pillAuto">自动</div>
     </div>
   </div>
@@ -224,10 +224,10 @@
 
 <script>
 (() => {
-  const FLOORS = ['1F','2F','3F','4F'];
-  const DEVICE = ['2F','3F'];
-  let you = '2F', dest = '4F', car = '2F', car2 = '3F';
-  let auto = true, calling = false, traveling = false, transient = null, callFloor = '2F';
+  const FLOORS = ['B','1F','2F','3F'];
+  const DEVICE = ['1F','2F'];
+  let you = '1F', dest = '3F', car = '1F', car2 = '2F';
+  let auto = true, calling = false, traveling = false, transient = null, callFloor = '1F';
   const $ = id => document.getElementById(id);
 
   const dir = () => {
@@ -247,7 +247,7 @@
     const DIST=9.0, NEAR=0.15;
     const L=[0.40,0.80,0.45];
 
-    const floors=["1F","2F","3F","4F"];
+    const floors=["B","1F","2F","3F"];
     const slabY=i=>i*floorGap;
     const carCenterY=i=>slabY(i)+carHalfH+carClear;
     const doorH=()=>carHalfH*2-0.18;
@@ -255,7 +255,7 @@
     const shaftBottom=slabY(0)-pitDepth;
     const shaftTop=carCenterY(floors.length-1)+carHalfH+headroom;
 
-    // 视野窗口：2F / 3F 完整，1F / 4F 只露一小截并做“暗影”
+    // 视野窗口：1F / 2F 完整，B / 3F 只露一小截并做“暗影”
     const viewBottom=slabY(1)-1.00, viewTop=slabY(3)+0.80;
     const viewCenterY=(viewBottom+viewTop)/2, viewHeight=viewTop-viewBottom;
     const bandBottom=slabY(1), bandTop=slabY(3);
@@ -475,7 +475,7 @@
           for(let i=1;i<f.pts.length;i++) ctx.lineTo(f.pts[i][0],f.pts[i][1]);
           ctx.closePath(); ctx.fill(); }
       }
-      // 上下渐隐：让 1F / 4F 的半截融进黑暗里
+      // 上下渐隐：让 B / 3F 的半截融进黑暗里
       const g=ctx.createLinearGradient(0,0,0,cv.height*0.22);
       g.addColorStop(0,'rgba(3,7,12,0.82)'); g.addColorStop(1,'rgba(3,7,12,0)');
       ctx.fillStyle=g; ctx.fillRect(0,0,cv.width,cv.height*0.22);
@@ -522,7 +522,7 @@
 
     return {
       fit,
-      /** 楼层如 "3F"；传 null 表示“没读到”，井道里就不画轿厢 */
+      /** 楼层如 "2F"；传 null 表示“没读到”，井道里就不画轿厢 */
       setFloor(f){
         const i=floors.indexOf(f);
         if(i<0){ if(carVisible){ carVisible=false; draw(); } return; }
