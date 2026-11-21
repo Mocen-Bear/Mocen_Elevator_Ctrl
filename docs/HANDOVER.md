@@ -64,7 +64,7 @@ preview/elevator_ui_preview.html
 
 **① 扫描 + 判层**
 - 扫描时只认名字以 `ELEV-` 开头的设备；`allowDuplicates: true` 拿持续 RSSI。
-- 对每个设备做 RSSI 平滑（中位数窗口 5 + EMA α=0.5），取最大值 = `nearestFloor`。
+- 对每个设备做 RSSI 平滑（中位数窗口 3 + EMA α=0.62，与安卓端 `ElevatorDevice` 一致），取最大值 = `nearestFloor`。
 - 用滞回防抖：`> -70 dBm` 持续 0.5s → 浮出按钮；`< -80 dBm` 持续 1.5s → 收起。
 
 **② 算方向 + 一键呼梯**

@@ -118,7 +118,7 @@ elev.call(floor: plan.callFloor, up: plan.up)   // 内部写 "UP" 或 "DOWN"
 
 ```
 每收到一次广播：
-  rssi中位数(窗口5)  →  EMA平滑(α=0.5)  →  取两层里最大的 = nearestRssi
+  rssi中位数(窗口3)  →  EMA平滑(α=0.62)  →  取两层里最大的 = nearestRssi
 ```
 
 然后加 **滞回**，避免按钮在边缘疯狂闪：
@@ -129,7 +129,8 @@ elev.call(floor: plan.callFloor, up: plan.up)   // 内部写 "UP" 或 "DOWN"
 | **保持显示** | `nearestRssi > -80 dBm`（比浮出门槛低 10 dB，形成滞回） |
 | **自动收起** | `nearestRssi < -80 dBm` 持续 ≈1.5 s |
 
-（这套"中位数 + EMA + 滞回"就是安卓端 `FloorJudge.kt` 的思路，可直接照搬参数。）
+（"中位数 + EMA"两步照抄安卓端 `ElevatorDevice`：窗口 3、α=0.62；
+下面的 -70 / -80 dBm 是本页自己的悬浮按钮门槛，和安卓判层用的 3 dB 滞回不是一回事。）
 
 **演示环境特别注意**：只连/只判 `ELEV-1F`、`ELEV-2F` 两块，取最近的即可；
 不要因为扫到别的 BLE 设备而误触发 —— 一定要按 `name.hasPrefix("ELEV-")` 过滤。
@@ -296,8 +297,8 @@ iOS（用 **SceneKit** 或 SwiftUI `Canvas` 重画）。演示不追求 3D 的�
 | 浮出门槛 | `nearestRssi > -70 dBm` | 越靠近越灵敏，越小越迟 |
 | 收起门槛 | `< -80 dBm` | 与浮出门槛差 10 dB 形成滞回 |
 | 保持时长 | 浮出 0.5 s / 收起 1.5 s | 防抖 |
-| RSSI 窗口 | 5 | 中位数去毛刺 |
-| EMA α | 0.5 | 平滑系数 |
+| RSSI 窗口 | 3 | 中位数去毛刺（同安卓端 `RSSI_WINDOW`） |
+| EMA α | 0.62 | 平滑系数（同安卓端 `EMA_ALPHA`） |
 | 拖拽展开阈值 | 60 pt | 松手判定 |
 | 呼叫超时 | 3 s | 超过就判失败回到可点 |
 
