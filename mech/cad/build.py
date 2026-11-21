@@ -25,7 +25,7 @@ import trimesh
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DIR_STL = os.path.join(ROOT, "stl")
-DIR_IMG = os.path.join(ROOT, "预览")
+DIR_IMG = os.path.join(ROOT, "renders")
 os.makedirs(DIR_STL, exist_ok=True)
 os.makedirs(DIR_IMG, exist_ok=True)
 

@@ -43,14 +43,14 @@
   08_连接销.stl        0.25 cm3  三角    508  水密 OK    打印高 6.0 mm
 
 === 渲染 ===
-  D:\文档\Default Project\elevator-control\机械件_演示样机\预览\01_总装_正面.png
-  D:\文档\Default Project\elevator-control\机械件_演示样机\预览\02_总装_背面.png
-  D:\文档\Default Project\elevator-control\机械件_演示样机\预览\03_机构特写.png
-  D:\文档\Default Project\elevator-control\机械件_演示样机\预览\04_剖视_静止.png
-  D:\文档\Default Project\elevator-control\机械件_演示样机\预览\05_剖视_压下3mm.png
-  D:\文档\Default Project\elevator-control\机械件_演示样机\预览\06_爆炸图.png
-  D:\文档\Default Project\elevator-control\机械件_演示样机\预览\07_零件一览.png
-  D:\文档\Default Project\elevator-control\机械件_演示样机\预览\08_打印摆放.png
-  D:\文档\Default Project\elevator-control\机械件_演示样机\预览\09_原理图.png
+  mech/renders/01_总装_正面.png
+  mech/renders/02_总装_背面.png
+  mech/renders/03_机构特写.png
+  mech/renders/04_剖视_静止.png
+  mech/renders/05_剖视_压下3mm.png
+  mech/renders/06_爆炸图.png
+  mech/renders/07_零件一览.png
+  mech/renders/08_打印摆放.png
+  mech/renders/09_原理图.png
 
-报告: D:\文档\Default Project\elevator-control\机械件_演示样机\参数与校验报告.md
+报告: mech/参数与校验报告.md
